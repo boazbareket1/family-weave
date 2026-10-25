@@ -169,9 +169,10 @@ dialog::backdrop{background:rgba(10,20,24,.5)}
 .lc{position:absolute;transform:translate(-50%,-50%);text-align:right;background:var(--panel);color:var(--fg);border:1.5px solid var(--line);border-radius:14px;padding:9px 11px;box-shadow:0 6px 18px rgba(0,0,0,.12);font-size:.86rem;line-height:1.35;display:grid;gap:3px;transition:border-color .15s,box-shadow .15s}
 .lc:hover,.lc:focus-visible{border-color:var(--gold);box-shadow:0 8px 22px rgba(0,0,0,.18)}
 .lc .nm{display:flex;align-items:center;gap:7px;font-family:var(--f-display);font-weight:700;font-size:1.08rem}
-.lc .r{display:grid;grid-template-columns:1.6em auto 1fr;gap:5px;align-items:baseline}
-.lc .r .num{font-size:1.25rem}
-.lc .r small{color:var(--muted);font-size:.75rem}
+.lc .r{display:block;line-height:1.3}
+.lc .r .num{font-size:.85rem;color:#10202a;background:var(--t1);border-radius:999px;padding:0 7px;margin-inline-start:5px;font-family:var(--f-num);font-weight:600}
+.lc .r small{display:inline;color:var(--fg);font-weight:700;font-size:.82rem}
+.lc .r .v{display:block;color:var(--muted);font-size:.8rem}
 .lc .more{color:var(--teal);font-size:.75rem;font-weight:700}
 .lcenter{position:absolute;transform:translate(-50%,-50%);text-align:center;color:#eef2f0;pointer-events:none}
 .lcenter .num{color:var(--t1);font-size:clamp(2.6rem,6vw,4.4rem)}
@@ -204,6 +205,21 @@ dialog::backdrop{background:rgba(10,20,24,.5)}
 .why{margin:8px 0 0;color:var(--muted);font-size:.95rem}
 .score{position:sticky;top:8px;z-index:4;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-top:10px;box-shadow:0 4px 14px rgba(0,0,0,.08)}
 .score b{font-family:var(--f-num);font-size:1.5rem;color:var(--gold)}
+
+/* parameter blocks: name first, short definition, then the personal reading; number small */
+.param{border-top:1px solid rgba(255,255,255,.12);padding:14px 0 2px}
+.param:first-of-type{border-top:0;padding-top:6px}
+.param .ph{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.param .pn{font-family:var(--f-display);font-weight:700;font-size:1.35rem;color:#fff4d6}
+.param .pv{font-family:var(--f-num);font-weight:600;font-size:1rem;line-height:1;color:#10202a;background:var(--t1);border-radius:999px;padding:3px 9px}
+.param .pt{font-weight:700;color:var(--t1)}
+.param .pd{font-size:.82rem;opacity:.72;margin:2px 0 6px;line-height:1.4}
+.param .pa{margin:0;font-size:1.02rem;line-height:1.65;opacity:.95}
+.reader .param{border-top:1px solid var(--line);padding:16px 0 4px}
+.reader .param .pn{color:var(--fg);font-size:clamp(1.4rem,2.6vw,1.9rem)}
+.reader .param .pt{color:var(--gold)}
+.reader .param .pd{font-size:clamp(.85rem,1.3vw,1rem);color:var(--muted);opacity:1}
+.reader .param .pa{font-size:inherit}
 
 @media (max-width:900px){.board{grid-template-columns:1fr}.board .side{position:static}}
 @media (prefers-reduced-motion:no-preference){.lit{animation:pop .6s ease-out;transform-box:fill-box;transform-origin:center}@keyframes pop{from{opacity:0;transform:scale(.4)}}}
@@ -936,15 +952,25 @@ function personIx(p){
   ix.push([`השנה שלך: ${p.py}, ${YKW[p.py]}`,N[p.py].year]);
   return ix;
 }
+const PARAMS={
+ LP:{n:"שביל החיים",d:"המספר החשוב ביותר במפה, מחושב מתאריך הלידה: הכיוון והשיעור המרכזי של החיים."},
+ expr:{n:"מספר הביטוי",d:"סכום כל אותיות השם: הכישרונות והכלים שאיתם נולדת."},
+ soul:{n:"דחף הנשמה",d:"סכום התנועות בשם: מה שמניע אותך מבפנים, כשאף אחד לא רואה."},
+ pers:{n:"מספר האישיות",d:"סכום העיצורים בשם: הרושם הראשון שאנשים מקבלים ממך."}
+};
+function paramHTML(key,p){
+  const v=p[key],P=PARAMS[key];
+  const body={LP:`<span class="pt">${get(v,"title")}.</span> ${get(v,"essence")}`,expr:get(v,"expr"),soul:get(v,"soul"),pers:get(v,"persona")}[key];
+  return `<div class="param"><div class="ph"><span class="pn">${P.n}</span><span class="pv">${v}</span></div><p class="pd">${P.d}</p><p class="pa">${body}</p></div>`;
+}
 function myMap(p){
   const lp=p.LP,ess=get(lp,"essence");
   const ix=personIx(p);
   let curH="";
   if(p.cur){const a=p.an,c=p.cur;curH=`<div class="ix"><b>השם של היום</b><p>${c.expr.v===a.expr.v?"מספר הביטוי נשאר זהה.":`השם של היום מוסיף ${get(c.expr.v,"kw")}.`} ${c.soul.v&&single(c.soul.v)!==single(a.soul.v)?`מבפנים נוספה כמיהה ל${get(c.soul.v,"kw")}.`:""}</p></div>`;}
   return `<section class="night essence">
-    <div style="display:flex;gap:14px;align-items:center"><span class="num">${lp}</span><div><div style="opacity:.8;font-size:.9rem">שביל החיים שלך</div><h2>${get(lp,"title")}</h2></div></div>
-    <p>${ess}</p>
-    <div class="tiles"><div class="tile"><span class="num">${p.LP}</span><small>הדרך</small></div><div class="tile"><span class="num">${p.expr}</span><small>הכלים (ביטוי)</small></div><div class="tile"><span class="num">${p.soul}</span><small>הלב (נשמה)</small></div><div class="tile"><span class="num">${p.pers}</span><small>הפנים החוצה</small></div></div>
+    <div style="opacity:.8;font-size:.9rem;margin-bottom:4px">המספרים שלך</div>
+    ${["LP","expr","soul","pers"].map(k=>paramHTML(k,p)).join("")}
   </section>
   <div class="sec"><h3>הצמתים שלך</h3>${ix.map(x=>`<div class="ix"><b>${x[0]}</b><p>${x[1]}</p></div>`).join("")}${curH}</div>
   <details class="more"><summary>עוד עליי: חוזקות, צל וכיוונים</summary>
@@ -983,10 +1009,7 @@ const short=(n,k=2)=>get(n,"kw").split(",").slice(0,k).join(",").trim();
 function personReading(p){
   const ix=personIx(p),th=myThreads(G,p),fr=myFriction(G,p);
   let h=`<div class="eyebrow">המפה של</div><h2>${esc(p.name)}</h2>
-  <div class="chips"><span class="chip"><b>${p.LP}</b>הדרך</span><span class="chip"><b>${p.expr}</b>הכלים</span><span class="chip"><b>${p.soul}</b>הלב</span></div>
-  <h3>הדרך · שביל החיים ${p.LP}: ${get(p.LP,"title")}</h3><p>${get(p.LP,"essence")}</p>
-  <h3>הכלים · מספר הביטוי ${p.expr}</h3><p>${get(p.expr,"expr")}</p>
-  <h3>הלב · דחף הנשמה ${p.soul}</h3><p>${get(p.soul,"soul")}</p>
+  ${["LP","expr","soul"].map(k=>paramHTML(k,p)).join("")}
   <h3>הצומת: ${ix[0][0]}</h3><p>${ix[0][1]}</p>
   <h3>בפנים ובחוץ</h3><p>${ix[1][1]}</p>`;
   if(G.n>1){
@@ -1079,9 +1102,9 @@ function layoutLead(){
 function cardHTML(p,i,q,w){
   const style=q?`left:${q.kx}px;top:${q.ky}px;width:${w}px`:"";
   return `<button class="lc" data-i="${i}" style="${style}"><span class="nm">${dotOf(p)}${esc(p.label)}</span>
-    <span class="r"><span class="num">${p.LP}</span><small>דרך</small><span>${get(p.LP,"title")}</span></span>
-    <span class="r"><span class="num">${p.expr}</span><small>כלים</small><span>${short(p.expr)}</span></span>
-    <span class="r"><span class="num">${p.soul}</span><small>לב</small><span>${short(p.soul)}</span></span>
+    <span class="r"><small>שביל החיים</small><span class="num">${p.LP}</span><span class="v">${get(p.LP,"title")}</span></span>
+    <span class="r"><small>ביטוי</small><span class="num">${p.expr}</span><span class="v">${short(p.expr)}</span></span>
+    <span class="r"><small>דחף הנשמה</small><span class="num">${p.soul}</span><span class="v">${short(p.soul)}</span></span>
     <span class="more">להקראה ←</span></button>`;
 }
 addEventListener("resize",()=>{if(view==="lead")layoutLead();});
