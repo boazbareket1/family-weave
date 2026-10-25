@@ -221,6 +221,14 @@ dialog::backdrop{background:rgba(10,20,24,.5)}
 .reader .param .pd{font-size:clamp(.85rem,1.3vw,1rem);color:var(--muted);opacity:1}
 .reader .param .pa{font-size:inherit}
 
+.cm-tg{border:1px solid rgba(255,244,214,.4);background:rgba(255,244,214,.08);color:#fff4d6;border-radius:999px;padding:3px 11px;font-size:.8rem;font-weight:600}
+.lead-actions [data-cm]{color:var(--fg)}
+.pick button.nm{display:inline-flex;align-items:center;gap:7px}
+.pick button.nm .dot,.why .dot,.pdots .dot{width:11px;height:11px}
+.pick button.nm.close{border-color:#c9922a;background:none;color:#a8750f}
+.pdots{display:inline-flex;gap:6px;align-items:center;margin-inline-start:auto;padding-inline-start:8px}
+.why .dot{display:inline-block;vertical-align:-1px}
+
 @media (max-width:900px){.board{grid-template-columns:1fr}.board .side{position:static}}
 @media (prefers-reduced-motion:no-preference){.lit{animation:pop .6s ease-out;transform-box:fill-box;transform-origin:center}@keyframes pop{from{opacity:0;transform:scale(.4)}}}
 @media print{body{background:#fff}.steps,.nav,.btn,.tabs{display:none!important}}
@@ -512,6 +520,10 @@ const FAM={
 const fam=(n,f)=>(FAM[n]&&FAM[n][f])||(FAM[single(n)]&&FAM[single(n)][f])||"";
 const TRIBE=["העצמאות והמחשבה","החומר והעשייה","הרגש והיצירה"];
 const TRIBE_NUMS=["1, 5, 7","2, 4, 8","3, 6, 9"];
+const PCOL=["#ff8a7a","#ffc857","#7ee0c3","#7fb8ff","#c79bff","#ff9fd2","#a6e36b","#ffa94d","#5fd3e6","#e6d26b","#9aa7ff","#f07b9a","#5ec98f","#d9a3ff","#ffd1a1"];
+const TRIBEC=["#7fd1c7","#f0c46a","#f2a08f"];
+let colorMode="person";try{colorMode=localStorage.getItem("fam-colormode")||"person"}catch(e){}
+const fillOf=p=>colorMode==="tribe"?TRIBEC[p.tribe]:p.color;
 const TCOL=["var(--t0)","var(--t1)","var(--t2)"];
 const STAGES=[
  {k:"join",t:"המעגל נדלק",short:"הצטרפות"},
@@ -636,7 +648,7 @@ function personOf(id,m){
 function analyzeFamily(members){
   const P=Object.entries(members||{}).filter(([id,m])=>m&&m.name&&/^\d{4}-\d{2}-\d{2}$/.test(m.bdate)).map(([id,m])=>personOf(id,m)).sort((a,b)=>a.t-b.t);
   // unique display names
-  const cnt={};P.forEach(p=>cnt[p.first]=(cnt[p.first]||0)+1);P.forEach(p=>p.label=cnt[p.first]>1?p.name:p.first);
+  const cnt={};P.forEach(p=>cnt[p.first]=(cnt[p.first]||0)+1);P.forEach(p=>p.label=cnt[p.first]>1?p.name:p.first);P.forEach((p,i)=>p.color=PCOL[i%PCOL.length]);
   const G={P,n:P.length};
   if(!P.length)return G;
   const sumLP=P.reduce((a,p)=>a+p.LP,0);
@@ -803,16 +815,17 @@ function skySVG(opts={}){
   if(opts.friction){opts.friction.forEach(f=>{const [x1,y1]=pos.get(f.a),[x2,y2]=pos.get(f.b);lines+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#f2a08f" stroke-width="2.4" stroke-dasharray="3 7" stroke-linecap="round"/>`;});}
   const ring=n>1?`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(255,244,214,.18)" stroke-width="1.5"/>`:"";
   const center=opts.center?`<text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="52" font-family="Cormorant Garamond,Georgia,serif" font-weight="600" fill="#f0c46a">${opts.center}</text><text x="${cx}" y="${cy+40}" text-anchor="middle" font-size="13" opacity=".8">${opts.centerLabel||""}</text>`:"";
-  const dots=P.map(p=>{const [x,y]=pos.get(p);const c=["#7fd1c7","#f0c46a","#f2a08f"][p.tribe];const lab=esc(p.label.length>12?p.label.slice(0,11)+"…":p.label);
+  const dots=P.map(p=>{const [x,y]=pos.get(p);const c=fillOf(p);const lab=esc(p.label.length>12?p.label.slice(0,11)+"…":p.label);
     const below=y>cy+20||n===1;const ty=below?y+34:y-22;
     const num=opts.num?`<text x="${x}" y="${y+6}" text-anchor="middle" font-size="17" font-weight="700" fill="#10202a">${opts.num(p)}</text>`:"";
     const hi=opts.hi&&opts.hi===p.id?`<circle cx="${x}" cy="${y}" r="27" fill="none" stroke="#fff4d6" stroke-width="2"/>`:"";
-    return `<g class="lit">${hi}<circle cx="${x}" cy="${y}" r="20" fill="${c}" opacity=".22"/><circle cx="${x}" cy="${y}" r="${opts.num?15:9}" fill="${c}" filter="url(#glow)"/>${num}<text x="${x}" y="${ty}" text-anchor="middle" font-size="15" font-weight="600">${lab}</text></g>`;}).join("");
+    return `<g class="lit">${hi}<circle cx="${x}" cy="${y}" r="20" fill="${c}" opacity=".22"/><circle cx="${x}" cy="${y}" r="${opts.num?15:9}" fill="${c}" filter="url(#glow)"/>${colorMode==="person"?`<circle cx="${x}" cy="${y}" r="${opts.num?18.5:12.5}" fill="none" stroke="${TRIBEC[p.tribe]}" stroke-width="2.5"/>`:""}${num}<text x="${x}" y="${ty}" text-anchor="middle" font-size="15" font-weight="600">${lab}</text></g>`;}).join("");
   const empty=!n?`<text x="${cx}" y="${cy+6}" text-anchor="middle" font-size="16" opacity=".7">המעגל מחכה לנקודת האור הראשונה</text>`:"";
   return `<svg viewBox="0 0 400 400" role="img" aria-label="מעגל המשתתפים"><defs><filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>${ring}${lines}${center}${dots}${empty}</svg>`;
 }
-const tribeLegend=()=>`<div class="legend">${[0,1,2].map(t=>`<span><i style="background:${["#7fd1c7","#f0c46a","#f2a08f"][t]}"></i>${TRIBE[t]}</span>`).join("")}</div>`;
-const dotOf=p=>`<span class="dot" style="color:${TCOL[p.tribe]};background:${TCOL[p.tribe]}"></span>`;
+const tribeLegend=()=>`<div class="legend">${colorMode==="person"?'<span style="opacity:.8">הטבעת מסמנת את השבט:</span>':""}${[0,1,2].map(t=>`<span><i style="${colorMode==="person"?`background:transparent;box-shadow:inset 0 0 0 2.5px ${TRIBEC[t]}`:`background:${TRIBEC[t]}`}"></i>${TRIBE[t]}</span>`).join("")}<button class="cm-tg" data-cm type="button">${colorMode==="person"?"צביעה לפי שבט":"צביעה לפי משתתף"}</button></div>`;
+const dotOf=p=>`<span class="dot" style="background:${fillOf(p)};${colorMode==="person"?`box-shadow:0 0 0 2px var(--panel),0 0 0 4px ${TRIBEC[p.tribe]}`:`box-shadow:0 0 8px ${TRIBEC[p.tribe]}`}" title="${esc(p.label)}"></span>`;
+document.addEventListener("click",e=>{if(!e.target.closest("[data-cm]"))return;colorMode=colorMode==="person"?"tribe":"person";try{localStorage.setItem("fam-colormode",colorMode)}catch(err){}const y=scrollY;route();scrollTo(0,y);});
 
 /* ---------- board ---------- */
 function curStage(){return Math.min(Math.max(+((S.meta&&S.meta.stage)||0),0),STAGES.length-1);}
@@ -1059,7 +1072,7 @@ function renderLead(){
   const keepOpen=reader?reader.innerHTML:null;
   app.innerHTML=`<div class="wrap" style="max-width:1600px">
    <div class="lead-top"><h1>${esc(S.meta.name)} <span class="muted" style="font-size:.6em">· תצוגת הנחיה</span></h1>
-    <div class="lead-actions"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button><a href="${gameURL()}">משחק הזיהוי</a><a href="${BASE}?r=${ROOM}&board=1${LOCAL&&qs.has("local")?"&local=1":""}">← ללוח השלבים</a></div></div>
+    <div class="lead-actions"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button><button data-cm type="button">${colorMode==="person"?"צביעה לפי שבט":"צביעה לפי משתתף"}</button><a href="${gameURL()}">משחק הזיהוי</a><a href="${BASE}?r=${ROOM}&board=1${LOCAL&&qs.has("local")?"&local=1":""}">← ללוח השלבים</a></div></div>
    <div id="leadStage"></div><div id="leadList"></div>
    <p class="muted" style="text-align:center;font-size:.88rem;margin-top:8px">לחיצה על כרטיס פותחת את הניתוח המלא להקראה. לחיצה על קו במרכז מקריאה את החיבור.</p></div>`;
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openReader(groupReading(b.dataset.g)));
@@ -1088,7 +1101,7 @@ function layoutLead(){
   L.forEach((t,i)=>{const A=pos.get(t.a),B=pos.get(t.b);if(!A||!B)return;const d=`M${A.dx},${A.dy} Q${cx},${cy} ${B.dx},${B.dy}`;
     lines+=`<path class="hit" data-li="${i}" d="${d}" fill="none" stroke="transparent" stroke-width="16" tabindex="0" role="button" aria-label="${LINKLAB[t.type]}: ${esc(t.a.label)} ו${esc(t.b.label)}"/><path class="vis" d="${d}" fill="none" stroke="${col[t.type]}" stroke-width="2.6" opacity=".85" ${t.type==="mirror"?'stroke-dasharray="6 6"':t.type==="friction"?'stroke-dasharray="3 7" stroke-linecap="round"':""} pointer-events="none"/>`;});
   const conn=narrow?"":P.map(p=>{const q=pos.get(p);const ex=cx+(rx-cardW/2+8)*Math.cos(q.a),ey=cy+(ry-cardH/2+18)*Math.sin(q.a);return `<line x1="${q.dx}" y1="${q.dy}" x2="${ex}" y2="${ey}" stroke="var(--line)" stroke-width="1.5"/>`;}).join("");
-  const dots=P.map(p=>{const q=pos.get(p),c=["#7fd1c7","#f0c46a","#f2a08f"][p.tribe];return `<circle cx="${q.dx}" cy="${q.dy}" r="16" fill="${c}" opacity=".25"/><circle cx="${q.dx}" cy="${q.dy}" r="8" fill="${c}" filter="url(#glow2)"/>${narrow?`<text x="${cx+(rDot-34)*Math.cos(q.a)}" y="${cy+(rDot-34)*Math.sin(q.a)+5}" text-anchor="middle" font-size="13" font-weight="600" fill="#eef2f0" font-family="Assistant,Arial">${esc(p.label)}</text>`:""}`;}).join("");
+  const dots=P.map(p=>{const q=pos.get(p),c=fillOf(p);return `<circle cx="${q.dx}" cy="${q.dy}" r="16" fill="${c}" opacity=".25"/><circle cx="${q.dx}" cy="${q.dy}" r="8" fill="${c}" filter="url(#glow2)"/>${colorMode==="person"?`<circle cx="${q.dx}" cy="${q.dy}" r="12" fill="none" stroke="${TRIBEC[p.tribe]}" stroke-width="2.5"/>`:""}${narrow?`<text x="${cx+(rDot-34)*Math.cos(q.a)}" y="${cy+(rDot-34)*Math.sin(q.a)+5}" text-anchor="middle" font-size="13" font-weight="600" fill="#eef2f0" font-family="Assistant,Arial">${esc(p.label)}</text>`:""}`;}).join("");
   st.innerHTML=`<svg class="bg" viewBox="0 0 ${W} ${H}" aria-hidden="false"><defs><radialGradient id="sky2" cx="50%" cy="35%" r="65%"><stop offset="0" stop-color="#16283a"/><stop offset="1" stop-color="#0f1c26"/></radialGradient><filter id="glow2" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
     ${conn}<circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#sky2)"/><circle cx="${cx}" cy="${cy}" r="${rDot}" fill="none" stroke="rgba(255,244,214,.16)"/>${lines}${dots}</svg>
     <div class="lcenter" style="left:${cx}px;top:${cy}px;width:${D*0.5}px">${G.n>1?`<span class="num">${G.LP}</span><div style="font-size:.9rem;opacity:.85">${get(G.LP,"title")}</div><button data-g2="mission">השליחות שלנו</button><small>${L.length?"לחצו על קו להקראה":""}</small>`:`<small style="font-size:1rem">${n?"מחכים לעוד משתתפים":"המעגל עוד ריק"}</small>`}</div>
@@ -1137,20 +1150,27 @@ function renderGame(){
   const P=G.P;
   if(P.length<2){app.innerHTML=`<div class="wrap"><div class="top"><h1>משחק הזיהוי</h1></div><div class="locked">המשחק נפתח כשיש לפחות שני משתתפים במעגל.</div></div>`;return;}
   const T=buildTraits(gameRound);
-  let right=0,total=0,shown=0;
-  T.forEach((x,i)=>{if(gameShown[i]){shown++;const pk=gamePicks[i]||[];total+=x.ids.length;right+=pk.filter(id=>x.ids.includes(id)).length;}});
+  const PNAME={LP:"שביל החיים",expr:"מספר הביטוי",soul:"דחף הנשמה",pers:"מספר האישיות"};
+  const near=(p,k)=>["LP","expr","soul","pers"].find(f=>single(p[f])===k);
+  let right=0,close=0,total=0,shown=0;
+  T.forEach((x,i)=>{if(gameShown[i]){shown++;const pk=gamePicks[i]||[];total+=x.ids.length;pk.forEach(id=>{if(x.ids.includes(id))right++;else if(near(P.find(p=>p.id===id),x.k))close++;});}});
   const back=`${BASE}?r=${ROOM}${qs.has("local")?"&local=1":""}`;
   app.innerHTML=`<div class="wrap" style="max-width:1000px">
    <div class="top"><h1>משחק הזיהוי</h1><span class="muted">${esc(S.meta.name)}</span></div>
    <p class="muted" style="margin:0">לכל תכונה: מי במעגל נושא/ת אותה? אפשר לבחור יותר משם אחד. לחשוב, להתייעץ, ואז לחשוף.</p>
-   <div class="score"><span>${shown?`זיהוי נכון: <b>${right}</b> מתוך ${total}`:`${T.length} תכונות · ${P.length} משתתפים`}</span>
+   <div class="score"><span>${shown?`זוהו נכון: <b>${right}</b> מתוך ${total}${close?` · קרובים: <b>${close}</b>`:""}`:`${T.length} תכונות · ${P.length} משתתפים`}</span>
     <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost small" id="gAll">חשיפת הכול</button><button class="btn ghost small" id="gNew">סבב חדש</button><a class="btn ghost small" style="text-decoration:none" href="${back}${isHost()||qs.has("board")?"&board=1":""}">← חזרה</a></span></div>
    ${T.map((x,i)=>{const pk=gamePicks[i]||[],sh=!!gameShown[i];
-     return `<div class="game-row"><div class="tr"><span class="k">${i+1}</span><span>${esc(x.t)}</span></div>
-     <div class="pick">${P.map(p=>{const on=pk.includes(p.id),own=x.ids.includes(p.id);const cls=sh?(on&&own?"ok":on?"bad":own?"miss":""):"";
-       return `<button class="nm ${cls}" data-g="${i}" data-p="${p.id}" aria-pressed="${on}" ${sh?"disabled":""}>${esc(p.label)}</button>`;}).join("")}
+     const byId=id=>P.find(p=>p.id===id);
+     const owners=x.ids.map(byId);
+     const extra=sh?pk.filter(id=>!x.ids.includes(id)).map(id=>{const p=byId(id),f=near(p,x.k);
+        return f?`<p class="why">${dotOf(p)} <b>קרוב:</b> התכונה מאפיינת בעיקר את ${owners.map(o=>esc(o.label)).join(" ו")}, אבל גם אצל ${esc(p.label)} היא קיימת, כ${PNAME[f]} (${x.k}).</p>`
+                :`<p class="why">${dotOf(p)} התכונה הזו מאפיינת יותר את ${owners.map(o=>dotOf(o)+" "+esc(o.label)).join(" ו")} מאשר את ${esc(p.label)}.</p>`;}).join(""):"";
+     return `<div class="game-row"><div class="tr"><span class="k">${i+1}</span><span>${esc(x.t)}</span><span class="pdots">${pk.map(id=>dotOf(byId(id))).join("")}</span></div>
+     <div class="pick">${P.map(p=>{const on=pk.includes(p.id),own=x.ids.includes(p.id);const cls=sh?(on&&own?"ok":on?(near(p,x.k)?"close":"bad"):own?"miss":""):"";
+       return `<button class="nm ${cls}" data-g="${i}" data-p="${p.id}" aria-pressed="${on}" ${sh?"disabled":""}>${dotOf(p)}${esc(p.label)}</button>`;}).join("")}
        ${sh?"":`<button class="btn small rv" data-rv="${i}">חשיפה</button>`}</div>
-     ${sh?`<p class="why">${x.ids.map(id=>esc(P.find(p=>p.id===id).label)).join(", ")} · ${esc(x.why)}</p>`:""}</div>`;}).join("")}
+     ${sh?`<p class="why">${owners.map(o=>dotOf(o)+" "+esc(o.label)).join(", ")} · ${esc(x.why)}</p>${extra}`:""}</div>`;}).join("")}
    <p class="muted" style="font-size:.88rem;margin-top:18px">המשחק רץ על המכשיר הזה בלבד. כל מכשיר שפותח אותו רואה את אותן תכונות באותו סדר, כך שאפשר לשחק גם על המסך הגדול וגם בטלפונים.</p></div>`;
   app.querySelectorAll("button.nm").forEach(b=>b.onclick=()=>{const i=b.dataset.g,id=b.dataset.p,a=gamePicks[i]=gamePicks[i]||[];const j=a.indexOf(id);j<0?a.push(id):a.splice(j,1);const y=scrollY;renderGame();scrollTo(0,y);});
   app.querySelectorAll("[data-rv]").forEach(b=>b.onclick=()=>{gameShown[b.dataset.rv]=1;const y=scrollY;renderGame();scrollTo(0,y);});
