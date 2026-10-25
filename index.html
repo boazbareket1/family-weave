@@ -183,6 +183,21 @@ dialog::backdrop{background:rgba(10,20,24,.5)}
 .reader .x{position:absolute;top:12px;left:14px;border:0;background:var(--panel2);color:var(--fg);border-radius:50%;width:42px;height:42px;font-size:1.5rem;line-height:1}
 .reader .rnav{display:flex;justify-content:space-between;gap:10px;margin-top:22px;position:sticky;bottom:-22px;background:var(--panel);padding:10px 0 4px}
 
+/* identification game */
+.game-row{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:12px}
+.game-row .tr{font-family:var(--f-display);font-size:clamp(1.15rem,2.4vw,1.5rem);line-height:1.45;display:flex;gap:10px;align-items:baseline}
+.game-row .tr .k{font-family:var(--f-num);color:var(--gold);font-weight:600;font-size:1.2em;min-width:1.4em}
+.pick{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;align-items:center}
+.pick button.nm{border:1.5px solid var(--line);background:var(--panel2);color:var(--fg);border-radius:999px;padding:7px 14px;font-weight:600;font-size:.98rem}
+.pick button.nm[aria-pressed="true"]{border-color:var(--gold);background:var(--gold);color:#fffdf8}
+.pick button.nm.ok{border-color:#2f8a5b;background:#2f8a5b;color:#fff}
+.pick button.nm.bad{border-color:var(--rose);background:none;color:var(--rose);text-decoration:line-through}
+.pick button.nm.miss{border:2px dashed #2f8a5b;color:#2f8a5b;background:none}
+.pick .rv{margin-inline-start:auto}
+.why{margin:8px 0 0;color:var(--muted);font-size:.95rem}
+.score{position:sticky;top:8px;z-index:4;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-top:10px;box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.score b{font-family:var(--f-num);font-size:1.5rem;color:var(--gold)}
+
 @media (max-width:900px){.board{grid-template-columns:1fr}.board .side{position:static}}
 @media (prefers-reduced-motion:no-preference){.lit{animation:pop .6s ease-out;transform-box:fill-box;transform-origin:center}@keyframes pop{from{opacity:0;transform:scale(.4)}}}
 @media print{body{background:#fff}.steps,.nav,.btn,.tabs{display:none!important}}
@@ -657,6 +672,7 @@ function route(fromData){
   if(!ROOM)return renderHome();
   if(!S.meta&&fromData&&online){return renderMissing();}
   if(!S.meta)return renderLoading();
+  if(qs.has("game"))return renderGame();
   if(qs.has("lead"))return renderLead();
   if(qs.has("board")||isHost())return renderBoard();
   const me=myId();
@@ -792,7 +808,7 @@ function renderBoard(){
   if(k==="who"&&mysteryShown&&G.P[mysteryIdx])skyOpts.hi=G.P[mysteryIdx].id;
   app.innerHTML=`<div class="wrap wide">
    <div class="top"><h1>${esc(S.meta.name)}</h1>
-     <span class="muted">קוד המעגל <span class="code">${ROOM}</span> · <button class="link" id="addBtn">+ הוספת בן/בת משפחה</button> · <a class="link" href="${leadURL()}">תצוגת הנחיה ↗</a>${online?"":" · <span style='color:var(--rose)'>אין חיבור</span>"}</span></div>
+     <span class="muted">קוד המעגל <span class="code">${ROOM}</span> · <button class="link" id="addBtn">+ הוספת בן/בת משפחה</button> · <a class="link" href="${leadURL()}">תצוגת הנחיה ↗</a> · <a class="link" href="${gameURL()}">משחק הזיהוי ↗</a>${online?"":" · <span style='color:var(--rose)'>אין חיבור</span>"}</span></div>
    <nav class="steps" aria-label="שלבי המפגש">${STAGES.map((s,i)=>`<button data-st="${i}" class="${i===st?"on":i<=curStage()?"done":""}">${i}. ${s.short}</button>`).join("")}</nav>
    <div class="board">
      <aside class="side night">${st===0?`<div class="join-box"><p style="margin:6px 0 10px;opacity:.9">סרקו כדי להצטרף</p><div class="qr">${qrSVG(joinURL())}</div><p style="margin:10px 0 0;opacity:.85">או היכנסו לקישור והקלידו את הקוד</p><div class="code">${ROOM}</div></div>`:""}
@@ -832,7 +848,7 @@ function stageHTML(st){
     h+=`<p class="lead">לכל אחד יש מספר דרך: הכיוון של החיים שלו. כל אחד כבר רואה בטלפון את המפה האישית המלאה שלו. כאן משחקים: מי זה?</p>`;
     const mp=P[mysteryIdx];
     h+=mp?`<div class="mystery">"${esc(N[single(mp.LP)].essence.split(". ").slice(0,2).join(". ").replace(/את\/ה/g,"הוא/היא"))}."${mysteryShown?`<div style="margin-top:12px;font-family:var(--f-body);font-size:1.1rem;color:var(--gold)">זה ${esc(mp.label)}: ${get(mp.LP,"title")}, שביל חיים ${mp.LP}</div>`:""}</div>`:"";
-    h+=`<div class="row" style="margin-top:6px"><button class="btn small" id="mysteryBtn">${mysteryIdx<0?"משפט מסתורי: על מי מדובר?":mysteryShown?"המשפט הבא":"חשיפה"}</button></div>`;
+    h+=`<div class="row" style="margin-top:6px"><a class="btn ghost small" style="text-decoration:none" href="${gameURL()}">משחק הזיהוי ↗</a><button class="btn small" id="mysteryBtn">${mysteryIdx<0?"משפט מסתורי: על מי מדובר?":mysteryShown?"המשפט הבא":"חשיפה"}</button></div>`;
     h+=`<div class="grid" style="margin-top:18px">${P.map(p=>personCard(p,`<p><span class="num">${p.LP}</span> <b>${get(p.LP,"title")}</b></p><p class="muted">${get(p.LP,"kw")}</p>`)).join("")}</div>`;
   }
   if(k==="num"){
@@ -892,7 +908,7 @@ function renderPhone(){
    <div class="top"><h1>שלום ${esc(me.first)}</h1><span class="muted">${esc(S.meta.name)}</span></div>
    <div class="tabs" role="tablist"><button role="tab" data-tab="me" class="${phoneTab==="me"?"on":""}" aria-selected="${phoneTab==="me"}">המפה שלי</button><button role="tab" data-tab="fam" class="${phoneTab==="fam"?"on":""}" aria-selected="${phoneTab==="fam"}">אני במשפחה</button></div>
    <div id="pbody">${phoneTab==="me"?myMap(me):meInFamily(me)}</div>
-   <p style="margin-top:28px;text-align:center"><button class="link" id="pAdd">+ הוספת בן/בת משפחה נוסף/ת</button> · <button class="link" id="pOut">זה לא אני</button></p>
+   <p style="margin-top:28px;text-align:center"><a class="link" href="${gameURL()}">משחק הזיהוי</a> · <button class="link" id="pAdd">+ הוספת בן/בת משפחה נוסף/ת</button> · <button class="link" id="pOut">זה לא אני</button></p>
   </div>`;
   app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{phoneTab=b.dataset.tab;renderPhone();window.scrollTo({top:0});});
   $("pAdd").onclick=openAdd;
@@ -1013,7 +1029,7 @@ function renderLead(){
   const keepOpen=reader?reader.innerHTML:null;
   app.innerHTML=`<div class="wrap" style="max-width:1600px">
    <div class="lead-top"><h1>${esc(S.meta.name)} <span class="muted" style="font-size:.6em">· תצוגת הנחיה</span></h1>
-    <div class="lead-actions"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button><a href="${BASE}?r=${ROOM}&board=1${LOCAL&&qs.has("local")?"&local=1":""}">← ללוח השלבים</a></div></div>
+    <div class="lead-actions"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button><a href="${gameURL()}">משחק הזיהוי</a><a href="${BASE}?r=${ROOM}&board=1${LOCAL&&qs.has("local")?"&local=1":""}">← ללוח השלבים</a></div></div>
    <div id="leadStage"></div><div id="leadList"></div>
    <p class="muted" style="text-align:center;font-size:.88rem;margin-top:8px">לחיצה על כרטיס פותחת את הניתוח המלא להקראה. לחיצה על קו במרכז מקריאה את החיבור.</p></div>`;
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openReader(groupReading(b.dataset.g)));
@@ -1062,6 +1078,56 @@ function cardHTML(p,i,q,w){
     <span class="more">להקראה ←</span></button>`;
 }
 addEventListener("resize",()=>{if(view==="lead")layoutLead();});
+
+
+/* ---------- identification game (?game=1) ---------- */
+function seeded(seed){let h=2166136261;for(const c of String(seed)){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return()=>{h^=h<<13;h^=h>>>17;h^=h<<5;return((h>>>0)%100000)/100000;};}
+function shuffle(a,rnd){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+let gameRound=0,gamePicks={},gameShown={};
+function buildTraits(round){
+  const P=G.P,rnd=seeded(ROOM+":"+round),pool=[];
+  const by=(f)=>{const m={};P.forEach(p=>{const k=single(p[f]);(m[k]=m[k]||[]).push(p)});return m;};
+  const LPm=by("LP"),SOm=by("soul"),EXm=by("expr");
+  Object.entries(LPm).forEach(([n,ps])=>{n=+n;const st=shuffle(N[n].strengths,rnd);
+    pool.push({t:`${st[0]}`,why:`חוזקה של שביל חיים ${n} (${N[n].title})`,ids:ps.map(p=>p.id),k:n,src:"lp"});
+    pool.push({t:`בתוך הקבוצה: ${fam(n,"give").split(".")[0]}`,why:`התפקיד של שביל חיים ${n}: ${fam(n,"role")}`,ids:ps.map(p=>p.id),k:n,src:"role"});
+    pool.push({t:`הצל: ${shuffle(N[n].shadow,rnd)[0]}`,why:`הצד המאתגר של שביל חיים ${n}`,ids:ps.map(p=>p.id),k:n,src:"shadow"});});
+  Object.entries(SOm).forEach(([n,ps])=>{n=+n;pool.push({t:`מבפנים כמה/ה ל${N[n].kw}`,why:`דחף הנשמה ${n}`,ids:ps.map(p=>p.id),k:n,src:"soul"});});
+  Object.entries(EXm).forEach(([n,ps])=>{n=+n;pool.push({t:`הכישרון בשם: ${N[n].gift}`,why:`מספר הביטוי ${n}`,ids:ps.map(p=>p.id),k:n,src:"expr"});});
+  // pick so that everyone appears, then fill, avoid repeating the same people+source combo
+  const pickd=[],used=new Set();const take=x=>{const key=x.src+x.k;if(used.has(key))return false;used.add(key);pickd.push(x);return true;};
+  const sh=shuffle(pool,rnd);
+  P.forEach(p=>{if(!pickd.some(x=>x.ids.includes(p.id))){const c=sh.find(x=>x.ids.includes(p.id)&&!used.has(x.src+x.k)&&x.src!=="shadow");if(c)take(c);}});
+  const target=Math.min(12,Math.max(6,P.length+3));
+  for(const x of sh){if(pickd.length>=target)break;take(x);}
+  return shuffle(pickd,rnd);
+}
+function renderGame(){
+  view="game";
+  const P=G.P;
+  if(P.length<2){app.innerHTML=`<div class="wrap"><div class="top"><h1>משחק הזיהוי</h1></div><div class="locked">המשחק נפתח כשיש לפחות שני משתתפים במעגל.</div></div>`;return;}
+  const T=buildTraits(gameRound);
+  let right=0,total=0,shown=0;
+  T.forEach((x,i)=>{if(gameShown[i]){shown++;const pk=gamePicks[i]||[];total+=x.ids.length;right+=pk.filter(id=>x.ids.includes(id)).length;}});
+  const back=`${BASE}?r=${ROOM}${qs.has("local")?"&local=1":""}`;
+  app.innerHTML=`<div class="wrap" style="max-width:1000px">
+   <div class="top"><h1>משחק הזיהוי</h1><span class="muted">${esc(S.meta.name)}</span></div>
+   <p class="muted" style="margin:0">לכל תכונה: מי במעגל נושא/ת אותה? אפשר לבחור יותר משם אחד. לחשוב, להתייעץ, ואז לחשוף.</p>
+   <div class="score"><span>${shown?`זיהוי נכון: <b>${right}</b> מתוך ${total}`:`${T.length} תכונות · ${P.length} משתתפים`}</span>
+    <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost small" id="gAll">חשיפת הכול</button><button class="btn ghost small" id="gNew">סבב חדש</button><a class="btn ghost small" style="text-decoration:none" href="${back}${isHost()||qs.has("board")?"&board=1":""}">← חזרה</a></span></div>
+   ${T.map((x,i)=>{const pk=gamePicks[i]||[],sh=!!gameShown[i];
+     return `<div class="game-row"><div class="tr"><span class="k">${i+1}</span><span>${esc(x.t)}</span></div>
+     <div class="pick">${P.map(p=>{const on=pk.includes(p.id),own=x.ids.includes(p.id);const cls=sh?(on&&own?"ok":on?"bad":own?"miss":""):"";
+       return `<button class="nm ${cls}" data-g="${i}" data-p="${p.id}" aria-pressed="${on}" ${sh?"disabled":""}>${esc(p.label)}</button>`;}).join("")}
+       ${sh?"":`<button class="btn small rv" data-rv="${i}">חשיפה</button>`}</div>
+     ${sh?`<p class="why">${x.ids.map(id=>esc(P.find(p=>p.id===id).label)).join(", ")} · ${esc(x.why)}</p>`:""}</div>`;}).join("")}
+   <p class="muted" style="font-size:.88rem;margin-top:18px">המשחק רץ על המכשיר הזה בלבד. כל מכשיר שפותח אותו רואה את אותן תכונות באותו סדר, כך שאפשר לשחק גם על המסך הגדול וגם בטלפונים.</p></div>`;
+  app.querySelectorAll("button.nm").forEach(b=>b.onclick=()=>{const i=b.dataset.g,id=b.dataset.p,a=gamePicks[i]=gamePicks[i]||[];const j=a.indexOf(id);j<0?a.push(id):a.splice(j,1);const y=scrollY;renderGame();scrollTo(0,y);});
+  app.querySelectorAll("[data-rv]").forEach(b=>b.onclick=()=>{gameShown[b.dataset.rv]=1;const y=scrollY;renderGame();scrollTo(0,y);});
+  $("gAll").onclick=()=>{T.forEach((x,i)=>gameShown[i]=1);const y=scrollY;renderGame();scrollTo(0,y);};
+  $("gNew").onclick=()=>{gameRound++;gamePicks={};gameShown={};renderGame();scrollTo(0,0);};
+}
+const gameURL=()=>BASE+"?r="+ROOM+"&game=1"+(qs.has("local")?"&local=1":"");
 
 /* ================= start ================= */
 if(LOCAL&&!qs.has("local"))$("demoNote").hidden=false;
