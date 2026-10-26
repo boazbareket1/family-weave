@@ -693,9 +693,13 @@ function analyzeFamily(members){
   // threads
   const T=[];const key=(a,b)=>[a.id,b.id].sort().join("|");const seen=new Set();
   P.forEach(a=>{
+    // A really lacks n: missing from the letters of the name AND not one of A's core numbers.
+    // B brings n: it is B's life path or expression. (A, who has n as a core number, never 'receives' it.)
     for(const n of a.lessons){
+      if(a.core.has(n))continue;
       const b=P.find(b=>b!==a&&(single(b.LP)===n||single(b.expr)===n));
-      if(b){T.push({type:"give",a:b,b:a,n,text:`${b.label} מביא/ה ל${a.label} את מה שחסר בשם שלו/ה: ${N[n].kw}.`});break;}
+      if(b){const role=single(b.LP)===n?"שביל החיים":"מספר הביטוי";
+        T.push({type:"give",a:b,b:a,n,text:`ל${a.label} חסר בשם המספר ${n} (${N[n].kw}). אצל ${b.label} זה ${role}, ולכן ${b.label} יכול/ה להביא ל${a.label} את מה שחסר לו/ה.`});break;}
     }
   });
   [1,2,3,4,5,6,7,8,9].forEach(n=>{const grpS=P.filter(p=>single(p.soul)===n);if(grpS.length<2)return;
@@ -705,7 +709,7 @@ function analyzeFamily(members){
     T.push(cl);
   });
   P.forEach(a=>P.forEach(b=>{
-    if(a!==b&&single(a.pers)===single(b.soul)&&single(a.soul)!==single(b.soul)&&!seen.has("m"+key(a,b))){seen.add("m"+key(a,b));if(T.filter(t=>t.type==="mirror").length<2)T.push({type:"mirror",a,b,n:single(a.pers),text:`מה ש${b.label} מרגיש/ה בפנים, ${a.label} מקרין/ה החוצה (${N[single(a.pers)].kw}). כל אחד יכול לראות בשני השתקפות של עצמו.`});}
+    if(a!==b&&single(a.pers)===single(b.soul)&&single(a.soul)!==single(b.soul)&&!seen.has("m"+key(a,b))){seen.add("m"+key(a,b));if(T.filter(t=>t.type==="mirror").length<2)T.push({type:"mirror",a,b,n:single(a.pers),text:`דחף הנשמה של ${b.label} הוא מספר האישיות של ${a.label} (${single(a.pers)}: ${N[single(a.pers)].kw}). מה ש${b.label} צריך/ה בפנים, ${a.label} מראה כלפי חוץ, ולכן כל אחד יכול לראות בשני צד של עצמו.`});}
   }));
   G.threads=T;
   // frictions
@@ -1030,8 +1034,8 @@ function renderFamily(){
 function personIx(p){
   const ix=[];
   const r=relation(p.LP,p.expr);
-  ix.push(["הדרך והכלים",r>=3?`הדרך שלך (${get(p.LP,"kw")}) והכלים שקיבלת בשם (${get(p.expr,"kw")}) מאותה משפחה. מה שבאת ללמוד ומה שקל לך הולכים יד ביד.`:r===2?`הכלים שבשם שלך (${get(p.expr,"kw")}) תומכים בדרך שלך (${get(p.LP,"kw")}), גם אם בדרך עקיפה.`:`יש מתח בין הדרך שלך (${get(p.LP,"kw")}) לבין הכלים שבשם (${get(p.expr,"kw")}). לפעמים מה שקל לך הוא לא מה שהדרך מבקשת, ושם בדיוק הצמיחה.`]);
-  ix.push(["בפנים ובחוץ",grp(p.soul)===grp(p.pers)?`מה שאת/ה צריך/ה בפנים (${get(p.soul,"kw")}) דומה למה שאת/ה מקרין/ה החוצה. אנשים פוגשים אותך די כמו שאת/ה.`:`בפנים את/ה צריך/ה ${get(p.soul,"kw")}, אבל מבחוץ רואים קודם ${get(p.pers,"kw")}. ייתכן שאנשים מכירים רק חלק ממך, וכדאי לשתף גם את מה שבפנים.`]);
+  ix.push(["שביל החיים מול מספר הביטוי: הדרך והכלים",r>=3?`הדרך שלך (${get(p.LP,"kw")}) והכלים שקיבלת בשם (${get(p.expr,"kw")}) מאותה משפחה. מה שבאת ללמוד ומה שקל לך הולכים יד ביד.`:r===2?`הכלים שבשם שלך (${get(p.expr,"kw")}) תומכים בדרך שלך (${get(p.LP,"kw")}), גם אם בדרך עקיפה.`:`יש מתח בין הדרך שלך (${get(p.LP,"kw")}) לבין הכלים שבשם (${get(p.expr,"kw")}). לפעמים מה שקל לך הוא לא מה שהדרך מבקשת, ושם בדיוק הצמיחה.`]);
+  ix.push(["דחף הנשמה מול מספר האישיות: מה בפנים ומה רואים מבחוץ",grp(p.soul)===grp(p.pers)?`דחף הנשמה (${p.soul}) מתאר מה את/ה צריך/ה בפנים: ${get(p.soul,"kw")}. מספר האישיות (${p.pers}) מתאר את הרושם הראשון שאנשים מקבלים ממך: ${get(p.pers,"kw")}. השניים מאותה משפחת מספרים, ולכן אנשים פוגשים אותך די כמו שאת/ה באמת.`:`דחף הנשמה (${p.soul}) מתאר מה את/ה צריך/ה בפנים: ${get(p.soul,"kw")}. מספר האישיות (${p.pers}) מתאר את הרושם הראשון שאנשים מקבלים ממך: ${get(p.pers,"kw")}. ייתכן שאנשים מכירים רק חלק ממך, וכדאי לשתף גם את מה שבפנים.`]);
   ix.push(["המתנה של יום הלידה",`נולדת ב־${p.B.d} לחודש, וזה מעניק לך ${get(p.bday,"gift")}.`]);
   if(p.lessons.length)ix.push(["מה עוד לומדים",p.lessons.slice(0,2).map(n=>N[n].lesson).join(" ")]);
   ix.push([`השנה שלך: ${p.py}, ${YKW[p.py]}`,N[p.py].year]);
@@ -1096,8 +1100,8 @@ function personReading(p){
   const ix=personIx(p),th=myThreads(G,p),fr=myFriction(G,p);
   let h=`<div class="eyebrow">המפה של</div><h2>${esc(p.name)}</h2>
   ${["LP","expr","soul"].map(k=>paramHTML(k,p)).join("")}
-  <h3>הצומת: ${ix[0][0]}</h3><p>${ix[0][1]}</p>
-  <h3>בפנים ובחוץ</h3><p>${ix[1][1]}</p>`;
+  <h3>${ix[0][0]}</h3><p>${ix[0][1]}</p>
+  <h3>${ix[1][0]}</h3><p>${ix[1][1]}</p>`;
   if(G.n>1){
     h+=`<h3>במעגל: ${fam(p.LP,"role")}</h3><p>${fam(p.LP,"give")}</p><p class="muted">מה המעגל מלמד: ${fam(p.LP,"learn")}</p>`;
     if(th.length)h+=`<h3>החוטים</h3>${th.map(t=>`<p>${esc(t.text)}</p>`).join("")}`;
