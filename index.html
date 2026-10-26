@@ -281,6 +281,25 @@ dl.gloss dt.hl,dl.gloss dt.hl+dd{background:var(--gold-soft);border-radius:6px}
 #shareDlg{width:min(520px,calc(100vw - 24px))}
 @media print{body.printing #printArea .pbreak{break-before:page}body.printing #printArea .ask{display:none}}
 
+.fbk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.fbk button{border:1px solid var(--line);background:transparent;color:inherit;opacity:.7;border-radius:999px;padding:2px 10px;font-size:.78rem}
+.fbk button:hover{opacity:1}
+.fbk button[aria-pressed="true"]{opacity:1;border-color:var(--gold);background:var(--gold-soft)}
+.night .fbk button{border-color:rgba(255,255,255,.25)}
+.fbnote{flex:1;min-width:160px;font-size:.85rem!important;padding:5px 9px!important}
+.fbrow{border-top:1px solid var(--line);padding:10px 0}
+.fbrow p{margin:4px 0}.fbn{color:var(--rose);font-size:.92em}
+.cyc{border-top:1px solid rgba(255,255,255,.12);padding:10px 0}
+.reader .cyc,.ix .cyc{border-color:var(--line)}
+.cyc.now{background:rgba(240,196,106,.12);border-radius:10px;padding:10px}
+.cyc p{margin:3px 0}
+.fyears{display:flex;gap:6px;overflow-x:auto}
+.fy{flex:1 0 70px;text-align:center;border:1px solid var(--line);border-radius:10px;padding:6px 4px;background:var(--panel)}
+.fy.now{border-color:var(--gold);background:var(--gold-soft)}
+.fy small{display:block;font-size:.75rem;color:var(--muted)}
+.fy .num{font-size:1.5rem}
+@media print{.fbk{display:none!important}}
+
 @media (max-width:900px){.board{grid-template-columns:1fr}.board .side{position:static;order:2}}
 @media (prefers-reduced-motion:no-preference){.lit{animation:pop .6s ease-out;transform-box:fill-box;transform-origin:center}@keyframes pop{from{opacity:0;transform:scale(.4)}}}
 @media print{body{background:#fff}.steps,.nav,.btn,.tabs{display:none!important}}
@@ -756,7 +775,7 @@ function familyRel(p,G){
 /* ================= state & routing ================= */
 let S={meta:null,members:{},notes:{}};let G={P:[]};let online=true;let view="";let phoneTab="me";let boardStage=null;let mysteryIdx=-1,mysteryShown=false;
 function onData(st,ok){
-  online=ok;S={meta:st.meta||null,members:st.members||{},notes:st.notes||{}};
+  online=ok;S={meta:st.meta||null,members:st.members||{},notes:st.notes||{},fb:st.fb||{}};
   G=analyzeFamily(S.members);
   route(true);
 }
@@ -924,7 +943,7 @@ function renderBoard(){
   if(k==="who"&&mysteryShown&&G.P[mysteryIdx])skyOpts.hi=G.P[mysteryIdx].id;
   app.innerHTML=`<div class="wrap wide">
    <div class="top"><h1>${esc(S.meta.name)}</h1>
-     <span class="muted">קוד המעגל <span class="code">${ROOM}</span> · <button class="link" id="addBtn">+ הוספת בן/בת משפחה</button> · <button class="link" type="button" data-sharedlg="">שיתוף / PDF</button>${online?"":" · <span style='color:var(--rose)'>אין חיבור</span>"}</span></div>
+     <span class="muted">קוד המעגל <span class="code">${ROOM}</span> · <button class="link" id="addBtn">+ הוספת בן/בת משפחה</button> · <button class="link" type="button" data-sharedlg="">שיתוף / PDF</button> · <button class="link" type="button" data-fbopen>משוב על הניתוחים</button>${online?"":" · <span style='color:var(--rose)'>אין חיבור</span>"}</span></div>
    <nav class="steps" aria-label="שלבי המפגש">${STAGES.map((s,i)=>`<button data-st="${i}" class="${i===st?"on":i<=curStage()?"done":""}" ${i>maxSt?'disabled title="נפתח כשהמנחה מתקדם"':""}>${i}. ${s.short}</button>`).join("")}</nav>${FACIL()?"":`<p class="muted" style="margin:0 0 6px;font-size:.9rem">${S.meta.open?"כל השלבים פתוחים.":"השלבים נפתחים כשהמנחה מתקדם במפגש."}</p>`}
    <div class="board">
      <aside class="side night">${st===0?`<div class="join-box"><p style="margin:6px 0 10px;opacity:.9">סרקו כדי להצטרף</p><div class="qr">${qrSVG(joinURL())}</div><p style="margin:10px 0 0;opacity:.85">או היכנסו לקישור והקלידו את הקוד</p><div class="code">${ROOM}</div></div>`:""}
@@ -1002,7 +1021,7 @@ function stageHTML(st){
   }
   if(k==="year"){
     h+=`<p class="lead">החיים נעים במחזורים של תשע שנים. השנה של המשפחה כולה היא חיבור של השנים האישיות של כולם.</p>
-    <div class="big"><span class="num">${G.year}</span><div><h3>שנה משפחתית ${G.year}: ${YKW[G.year]}</h3></div></div><p style="max-width:62ch">${N[G.year].year}</p>
+    <div class="big"><span class="num">${G.year}</span><div><h3>שנה משפחתית ${G.year}: ${YKW[G.year]}</h3></div></div><p style="max-width:62ch">${N[G.year].year}</p>${familyYearsHTML()}
     <div class="grid" style="margin-top:14px">${P.map(p=>personCard(p,`<p><span class="num">${p.py}</span> <b>${YKW[p.py]}</b></p><p class="muted">${N[p.py].pm.replace("חודש","שנה")}</p>`)).join("")}</div>`;
     const lack=G.missing.filter(n=>P.some(p=>p.py===n)||G.year===n);
     if(lack.length)h+=`<p class="ask" style="border-color:var(--teal)"><b>שימו לב</b>מה שחסר במפה של המשפחה (${lack.join(", ")}) מגיע אליכם השנה דרך הזמן.</p>`;
@@ -1082,7 +1101,7 @@ function paramHTML(key,p){
   const v=p[key],P=PARAMS[key];
   const body={LP:`<span class="pt">${get(v,"title")}.</span> ${get(v,"essence")}`,expr:get(v,"expr"),soul:get(v,"soul"),pers:get(v,"persona")}[key];
   const term={LP:"shvil",expr:"bitui",soul:"neshama",pers:"ishiut"}[key];
-  return `<div class="param"><div class="ph"><span class="pn">${P.n}</span><span class="pv">${v}</span><button type="button" class="qterm" data-term="${term}" aria-label="מה זה ${P.n}?">?</button></div><p class="pd">${P.d}</p><p class="pa">${body}</p>${key==="LP"?lpDeep(p):""}</div>`;
+  return `<div class="param"><div class="ph"><span class="pn">${P.n}</span><span class="pv">${v}</span><button type="button" class="qterm" data-term="${term}" aria-label="מה זה ${P.n}?">?</button></div><p class="pd">${P.d}</p><p class="pa">${body}</p>${fbBtns(p.id,key+":"+v,body)}${key==="LP"?lpDeep(p):""}</div>`;
 }
 function myMap(p){
   const lp=p.LP,ess=get(lp,"essence");
@@ -1093,7 +1112,8 @@ function myMap(p){
     <div style="opacity:.8;font-size:.9rem;margin-bottom:4px">המספרים שלך</div>
     ${["LP","expr","soul","pers"].map(k=>paramHTML(k,p)).join("")}
   </section>
-  <div class="sec"><h3>הצמתים שלך</h3>${ix.map(x=>`<div class="ix"><b>${x[0]}</b><p>${x[1]}</p></div>`).join("")}${curH}</div>
+  <div class="sec"><h3>הצמתים שלך</h3>${ix.map((x,i)=>`<div class="ix"><b>${x[0]}</b><p>${x[1]}</p>${fbBtns(p.id,"ix"+i+":"+[p.LP+"/"+p.expr,p.soul+"/"+p.pers,"bday"+p.bday,"les","py"+p.py][i],x[1])}</div>`).join("")}${curH}</div>
+  <div class="sec">${cyclesHTML(p)}${lessonsHTML(p)}</div>
   <details class="more"><summary>עוד עליי: חוזקות, צל וכיוונים</summary>
     <div class="ix"><b>חוזקות</b><p>${get(lp,"strengths").join(" · ")}</p></div>
     <div class="ix"><b>הצל</b><p>${get(lp,"shadow").join(" · ")}</p></div>
@@ -1139,7 +1159,7 @@ function personReading(p){
     if(th.length)h+=`<h3>החוטים</h3>${th.map(t=>`<p>${esc(t.text)}</p>`).join("")}`;
     if(fr){const o=fr.a===p?fr.b:fr.a;h+=`<h3>חיכוך וצמיחה</h3><p>החיכוך הוא עם ${esc(o.label)}. מה אפשר ללמוד ממנו/ה: ${get(o.LP,"gift")}.</p>`;}
   }
-  h+=`<h3>שאלה לדרך</h3><p>${get(p.LP,"growth")}</p>`;
+  h+=`<h3>שאלה לדרך</h3><p>${get(p.LP,"growth")}</p>`+cyclesHTML(p)+lessonsHTML(p);
   return h;
 }
 const LINKLAB={give:"נותן־מקבל",soul:"תאומי נשמה",mirror:"מראה",friction:"חיכוך וצמיחה"};
@@ -1160,7 +1180,7 @@ function groupReading(k){
   if(G.n<2)return `<h2>מחכים לעוד משתתפים</h2><p>התמונה הקבוצתית נפתחת כשיש לפחות שני משתתפים.</p>`;
   if(k==="mission")return `<div class="eyebrow">המספר שלנו</div><h2>${G.LP} · ${get(G.LP,"title")}</h2><p class="muted">${P.map(p=>p.LP).join(" + ")} = ${G.sumLP}</p><p>${fam(G.LP,"mission")}</p>${G.dom.length?`<h3>האנרגיה הדומיננטית: ${G.dom.join(", ")}</h3><p>${G.dom.map(n=>fam(n,"dom")).join(" ")}</p>`:""}<h3>שלושת השבטים</h3>${[0,1,2].map(t=>`<p><b>${TRIBE[t]}:</b> ${G.tribes[t].map(p=>esc(p.label)).join(", ")||"אף אחד"}</p>`).join("")}<div class="ask"><b>שאלה למעגל</b>${ASK.num}</div>`;
   if(k==="miss")return `<div class="eyebrow">מה חסר, ומי שומר עליו</div><h2>${G.missing.length?"חסרים: "+G.missing.join(", "):"כל המספרים נמצאים"}</h2>${G.missing.map(n=>`<h3>${n} · ${N[n].kw}</h3><p>${fam(n,"miss")}</p>`).join("")}${G.rare.length?`<h3>שומרי האוצרות</h3>${G.rare.map(n=>`<p><b>${esc(G.carriers[n][0].label)}</b> שומר/ת את ה־${n}: ${fam(n,"give")}</p>`).join("")}`:""}<div class="ask"><b>שאלה למעגל</b>${ASK.miss}</div>`;
-  if(k==="year")return `<div class="eyebrow">השנה שלנו</div><h2>שנה ${G.year}: ${YKW[G.year]}</h2><p>${N[G.year].year}</p><h3>השנים האישיות</h3>${P.map(p=>`<p><b>${esc(p.label)}:</b> ${p.py}, ${YKW[p.py]}</p>`).join("")}<div class="ask"><b>שאלה למעגל</b>${ASK.year}</div>`;
+  if(k==="year")return `<div class="eyebrow">השנה שלנו</div><h2>שנה ${G.year}: ${YKW[G.year]}</h2><p>${N[G.year].year}</p>${familyYearsHTML()}<h3>השנים האישיות</h3>${P.map(p=>`<p><b>${esc(p.label)}:</b> ${p.py}, ${YKW[p.py]}</p>`).join("")}<div class="ask"><b>שאלה למעגל</b>${ASK.year}</div>`;
   if(k==="links")return `<div class="eyebrow">כל החיווטים</div><h2>החוטים במארג</h2>${G.threads.filter(t=>t.text).map(t=>`<h3>${LINKLAB[t.type]}</h3><p>${esc(t.text)}</p>`).join("")}${G.frictions.map(f=>`<h3>${LINKLAB.friction}</h3><p>${esc(f.a.label)} ו${esc(f.b.label)}: ${esc(f.a.label)} יכול/ה ללמוד ${get(f.b.LP,"gift")}, ו${esc(f.b.label)} יכול/ה ללמוד ${get(f.a.LP,"gift")}.</p>`).join("")}<div class="ask"><b>שאלה למעגל</b>${ASK.threads}</div>`;
   return "";
 }
@@ -1182,7 +1202,7 @@ function renderLead(){
   const keepOpen=reader?reader.innerHTML:null;
   app.innerHTML=`<div class="wrap" style="max-width:1600px">
    <div class="lead-top"><h1>${esc(S.meta.name)} <span class="muted" style="font-size:.6em">· תצוגת הנחיה</span></h1>
-    <div class="lead-actions"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button><button data-cm type="button">${colorMode==="person"?"צביעה לפי שבט":"צביעה לפי משתתף"}</button><button type="button" data-sharedlg="">שיתוף / PDF</button></div></div>
+    <div class="lead-actions"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button><button data-cm type="button">${colorMode==="person"?"צביעה לפי שבט":"צביעה לפי משתתף"}</button><button type="button" data-sharedlg="">שיתוף / PDF</button><button type="button" data-fbopen>משוב</button></div></div>
    <div id="leadStage"></div><div id="leadList"></div>
    <p class="muted" style="text-align:center;font-size:.88rem;margin-top:8px">לחיצה על כרטיס פותחת את הניתוח המלא להקראה. לחיצה על קו במרכז מקריאה את החיבור.</p></div>`;
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openReader(groupReading(b.dataset.g)));
@@ -1506,6 +1526,81 @@ function glossaryHTML(focus){
 }
 function openGlossary(focus){openReader(glossaryHTML(focus));if(focus){const el=document.getElementById("g-"+focus);if(el)el.scrollIntoView({block:"center"});}}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-term]");if(!b)return;e.preventDefault();e.stopPropagation();openGlossary(b.dataset.term);},true);
+
+/* ================= feedback: "fits / doesn't fit" on each paragraph ================= */
+const voterId=()=>myId()||(()=>{let v=ls.get("fam-voter");if(!v){v="v"+newId();ls.set("fam-voter",v);}return v;})();
+const fbDocId=(sub,key)=>(voterId()+"_"+sub+"_"+key).replace(/[.$#\[\]\/]/g,"-");
+function fbBtns(sub,key,text){
+  if(!sub)return "";
+  const d=(S.fb||{})[fbDocId(sub,key)],v=d&&d.v;
+  return `<span class="fbk" data-fbs="${sub}" data-fbk="${key}" data-fbt="${esc(String(text||"").replace(/<[^>]+>/g,"").slice(0,140))}">
+   <button type="button" data-fbv="1" aria-pressed="${v===1}" title="הטקסט הזה קולע">👍 קולע</button><button type="button" data-fbv="-1" aria-pressed="${v===-1}" title="הטקסט הזה לא קולע">👎 לא קולע</button>
+   ${v===-1?`<input type="text" class="fbnote" maxlength="200" placeholder="מה לא קלע? (לא חובה)" value="${esc(d.note||"")}">`:""}</span>`;
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-fbv]");if(!b)return;
+  const w=b.closest(".fbk"),sub=w.dataset.fbs,key=w.dataset.fbk,id=fbDocId(sub,key),v=+b.dataset.fbv;
+  const cur=(S.fb||{})[id];
+  const doc=cur&&cur.v===v?null:{voter:voterId(),sub,key,v,s:w.dataset.fbt,t:Date.now(),note:cur&&cur.note||""};
+  S.fb=S.fb||{};if(doc)S.fb[id]=doc;else delete S.fb[id];
+  try{doc?await store.put(`rooms/${ROOM}/fb/${id}`,doc):await store.del(`rooms/${ROOM}/fb/${id}`);}catch(err){}
+  w.outerHTML=fbBtns(sub,key,w.dataset.fbt);
+});
+document.addEventListener("change",async e=>{
+  const i=e.target.closest(".fbnote");if(!i)return;const w=i.closest(".fbk"),id=fbDocId(w.dataset.fbs,w.dataset.fbk);
+  const d=(S.fb||{})[id];if(!d)return;d.note=i.value.trim().slice(0,200);
+  try{await store.patch(`rooms/${ROOM}/fb/${id}`,{note:d.note});}catch(err){}
+});
+function feedbackHTML(){
+  const all=Object.values(S.fb||{});
+  if(!all.length)return `<div class="eyebrow">משוב</div><h2>עוד אין משוב</h2><p>ליד כל פסקה בניתוח יש "קולע / לא קולע". כשבני המשפחה יסמנו, הסיכום יופיע כאן.</p>`;
+  const by={};all.forEach(d=>{const k=d.key;(by[k]=by[k]||{key:k,s:d.s,up:0,down:0,notes:[]});d.v===1?by[k].up++:by[k].down++;if(d.note)by[k].notes.push(d.note);});
+  const rows=Object.values(by).sort((a,b)=>b.down-a.down||b.up-a.up);
+  return `<div class="eyebrow">משוב</div><h2>מה קולע ומה לא</h2><p class="muted">${all.length} סימונים. הטקסטים שסומנו כ"לא קולע" מופיעים ראשונים.</p>
+   ${rows.map(r=>`<div class="fbrow"><b>👍 ${r.up} · 👎 ${r.down}</b> <span class="muted">${esc(r.key)}</span><p>${esc(r.s||"")}…</p>${r.notes.map(n=>`<p class="fbn">„${esc(n)}"</p>`).join("")}</div>`).join("")}
+   <div class="row"><button class="btn small" type="button" id="fbCopy">העתקת הסיכום לשליחה ל־Claude</button><span class="status" id="fbSt"></span></div>`;
+}
+function openFeedback(){
+  openReader(feedbackHTML());
+  const b=$("fbCopy");if(b)b.onclick=async()=>{
+    const all=Object.values(S.fb||{});const by={};all.forEach(d=>{(by[d.key]=by[d.key]||{s:d.s,up:0,down:0,notes:[]});d.v===1?by[d.key].up++:by[d.key].down++;if(d.note)by[d.key].notes.push(d.note);});
+    const t="משוב על הניתוחים במארג המשפחתי ("+S.meta.name+"):\n\n"+Object.entries(by).sort((a,b)=>b[1].down-a[1].down).map(([k,r])=>`[${k}] 👍${r.up} 👎${r.down}\n${r.s}…${r.notes.length?"\nהערות: "+r.notes.join(" | "):""}`).join("\n\n");
+    try{await navigator.clipboard.writeText(t);$("fbSt").textContent="הועתק ✓";}catch(e){prompt("העתיקו:",t);}
+  };
+}
+document.addEventListener("click",e=>{if(e.target.closest("[data-fbopen]")){e.preventDefault();openFeedback();}});
+
+/* ================= life cycles (pinnacles & challenges), ported from מפת המספרים ================= */
+function lifeCycles(p){
+  const B=p.B,m1=single(B.m),d1=single(B.d),y1=single(dsum(B.y));
+  const p1=rv(m1+d1),p2=rv(d1+y1),p3=rv(single(p1)+single(p2)),p4=rv(m1+y1);
+  const c1=Math.abs(m1-d1),c2=Math.abs(d1-y1),c3=Math.abs(c1-c2),c4=Math.abs(m1-y1);
+  const e1=36-single(B.LP);
+  const per=[[0,e1,p1,c1],[e1+1,e1+9,p2,c2],[e1+10,e1+18,p3,c3],[e1+19,null,p4,c4]];
+  const age=ageAt(B,{y:TODAY.getFullYear(),m:TODAY.getMonth()+1,d:TODAY.getDate()});
+  const cur=per.findIndex(x=>age>=x[0]&&(x[1]===null||age<=x[1]));
+  return {per,cur,age};
+}
+function cyclesHTML(p){
+  const {per,cur,age}=lifeCycles(p);
+  const rows=per.map((x,i)=>`<div class="cyc${i===cur?" now":""}"><div class="cyc-h"><b>תקופה ${i+1}</b> · גילאים ${x[1]===null?`${x[0]} ומעלה`:`${x[0]}–${x[1]}`}${i===cur?' <span class="now-pill">עכשיו</span>':""}</div>
+    <p><b>פסגה ${x[2]}:</b> ${get(x[2],"pinnacle")}</p><p><b>אתגר ${x[3]}:</b> ${x[3]===0?CH0:get(x[3],"challenge")}</p></div>`).join("");
+  const c=per[cur];
+  return `<details class="deep cycles"><summary>מחזורי החיים שלך: איפה את/ה עכשיו</summary>
+   <p class="pd" style="margin-top:8px">החיים מתחלקים לארבע תקופות. לכל תקופה <b>פסגה</b>, הנושא וההזדמנות שלה, ו<b>אתגר</b>, המכשול שהיא מבקשת ללמוד לעבור. היום, בגיל ${age}, את/ה בתקופה ${cur+1}${c?`: פסגה ${c[2]} (${get(c[2],"kw")}) ואתגר ${c[3]}`:""}.</p>${rows}</details>`;
+}
+function lessonsHTML(p){
+  if(!p.lessons.length)return "";
+  return `<details class="deep"><summary>השיעורים הקרמתיים שלך (${p.lessons.join(", ")})</summary>
+   <p class="pd" style="margin-top:8px">מספרים שלא מופיעים באף אות בשם שלך. אלה תחומים שבהם הכלים פחות מולדים, והחיים מזמנים ללמוד אותם שוב ושוב.</p>
+   ${p.lessons.map(n=>`<div class="dx"><b>${n} · ${N[n].kw}</b><p>${N[n].lesson}</p></div>`).join("")}</details>`;
+}
+function familyYearsHTML(){
+  if(G.n<2)return "";
+  const ys=[];for(let k=-2;k<=4;k++){const y=TY+k;const fy=single(G.P.reduce((a,p)=>a+single(single(p.B.d)+single(p.B.m)+single(dsum(y))),0));ys.push([y,fy]);}
+  return `<h3 style="margin-top:18px;font-size:1.15rem">המחזור המשפחתי</h3><p class="muted" style="margin:2px 0 8px">השנה המשפחתית לאורך השנים: לאן המשפחה נעה.</p>
+   <div class="fyears">${ys.map(([y,f])=>`<div class="fy${y===TY?" now":""}"><small>${y}</small><span class="num">${f}</span><small>${YKW[f]}</small></div>`).join("")}</div>`;
+}
 
 /* ================= start ================= */
 if(LOCAL&&!qs.has("local"))$("demoNote").hidden=false;
