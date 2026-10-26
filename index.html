@@ -229,7 +229,23 @@ dialog::backdrop{background:rgba(10,20,24,.5)}
 .pdots{display:inline-flex;gap:6px;align-items:center;margin-inline-start:auto;padding-inline-start:8px}
 .why .dot{display:inline-block;vertical-align:-1px}
 
-@media (max-width:900px){.board{grid-template-columns:1fr}.board .side{position:static}}
+/* global navigation: pill row on wide screens, fixed bottom bar on phones */
+.gnav{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-start;padding:14px 0 2px}
+.gnav button{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:999px;padding:8px 16px;font-weight:700;font-size:.95rem}
+.gnav button:hover{border-color:var(--gold)}
+.gnav button[aria-current="page"]{background:var(--gold);border-color:var(--gold);color:#fffdf8}
+.gnav .gi{font-size:1rem;line-height:1}
+@media (max-width:760px){
+  body{padding-bottom:calc(84px + env(safe-area-inset-bottom,0))}
+  .gnav{position:fixed;z-index:30;left:0;right:0;bottom:0;margin:0;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0));gap:2px;flex-wrap:nowrap;justify-content:space-around;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(0,0,0,.08)}
+  .gnav button{flex:1;flex-direction:column;gap:2px;border:0;border-radius:12px;padding:6px 2px;font-size:.74rem;background:none;color:var(--muted)}
+  .gnav button[aria-current="page"]{background:var(--gold-soft);color:var(--gold)}
+  .gnav .gi{font-size:1.25rem}
+  .tabs{top:max(6px,env(safe-area-inset-top,0))}
+}
+.steps button:disabled{opacity:.45;cursor:not-allowed}
+
+@media (max-width:900px){.board{grid-template-columns:1fr}.board .side{position:static;order:2}}
 @media (prefers-reduced-motion:no-preference){.lit{animation:pop .6s ease-out;transform-box:fill-box;transform-origin:center}@keyframes pop{from{opacity:0;transform:scale(.4)}}}
 @media print{body{background:#fff}.steps,.nav,.btn,.tabs{display:none!important}}
 </style>
@@ -703,17 +719,34 @@ function onData(st,ok){
   G=analyzeFamily(S.members);
   route(true);
 }
+let VIEW=qs.get("v")||(qs.has("game")?"game":qs.has("lead")?"circle":qs.has("board")?"stages":"");
+const FACIL=()=>isHost()||qs.has("board");
+const isMember=()=>{const me=myId();return !!(me&&S.members[me]);};
+function defaultView(){return isHost()?"stages":isMember()?"me":"join";}
+function go(v){
+  VIEW=v;closeReader();
+  try{const u=new URL(location.href);["board","lead","game"].forEach(k=>u.searchParams.delete(k));u.searchParams.set("v",v);history.replaceState(null,"",u);}catch(e){}
+  view="";route();window.scrollTo({top:0});
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;e.preventDefault();go(b.dataset.go);});
 function route(fromData){
   if(!ROOM)return renderHome();
   if(!S.meta&&fromData&&online){return renderMissing();}
   if(!S.meta)return renderLoading();
-  if(qs.has("game"))return renderGame();
-  if(qs.has("lead"))return renderLead();
-  if(qs.has("board")||isHost())return renderBoard();
-  const me=myId();
-  if(me&&S.members[me])return renderPhone();
+  let v=VIEW||defaultView();
+  if(v==="me"&&!isMember())v="join";
+  if(v==="game")return renderGame();
+  if(v==="circle")return renderLead();
+  if(v==="stages")return renderBoard();
+  if(v==="fam")return renderFamily();
+  if(v==="me")return renderPhone();
   if(view!=="join")renderJoin();else updateJoin();
 }
+function navHTML(cur){
+  const items=[isMember()?["me","המפה שלי","◉"]:["join","הצטרפות","+"],["fam","המשפחה","☷"],["circle","המעגל","◎"],["stages","שלבים","☰"],["game","משחק","✦"]];
+  return `<nav class="gnav" aria-label="ניווט בכלי">${items.map(([k,t,i])=>`<button type="button" data-go="${k}" ${k===cur?'aria-current="page"':""}><span class="gi" aria-hidden="true">${i}</span><span>${t}</span></button>`).join("")}</nav>`;
+}
+function addNav(cur){const w=app.querySelector(".wrap");if(w)w.insertAdjacentHTML("afterbegin",navHTML(cur));}
 function renderLoading(){view="loading";app.innerHTML=`<div class="wrap"><p class="muted" style="text-align:center;margin-top:30vh">מתחברים למעגל…</p></div>`;}
 function renderMissing(){view="missing";app.innerHTML=`<div class="wrap"><div class="card" style="margin-top:20vh;text-align:center"><h2>לא מצאנו את המעגל</h2><p class="muted">ייתכן שהקוד שגוי. אפשר לבקש קישור חדש ממי שפתח/ה את המעגל.</p><a class="btn" href="${BASE}${LOCAL?"?local=1":""}" style="text-decoration:none;display:inline-block">לדף הפתיחה</a></div></div>`;}
 
@@ -773,7 +806,7 @@ function renderJoin(){
   </div>
   <p class="muted" style="font-size:.85rem;margin-top:16px">הפרטים נשמרים רק בתוך המעגל הזה, ומי שיש לו את הקישור למעגל יכול לראות אותם.</p>
   </div>`;
-  $("jBtn").onclick=join;updateJoin();
+  $("jBtn").onclick=join;updateJoin();addNav("join");
 }
 function updateJoin(){const c=$("joinCount");if(c)c.textContent=G.n?`${G.n} כבר במעגל`:"";}
 function validPerson(name,bd,errEl){
@@ -787,7 +820,7 @@ async function join(){
   if(!validPerson(name,bd,$("jErr")))return;
   $("jBtn").disabled=true;
   try{const id=await store.post(`rooms/${ROOM}/members`,{name:name.slice(0,70),bdate:bd,cur:cur.slice(0,70),t:Date.now(),self:true});
-    ls.set("fam-me:"+ROOM,id);phoneTab="me";view="";S.members[id]={name,bdate:bd,cur,t:Date.now()};G=analyzeFamily(S.members);renderPhone();}
+    ls.set("fam-me:"+ROOM,id);view="";S.members[id]={name,bdate:bd,cur,t:Date.now()};G=analyzeFamily(S.members);go("me");}
   catch(e){$("jErr").textContent="השליחה לא הצליחה. בדקו את החיבור ונסו שוב.";$("jBtn").disabled=false;}
 }
 
@@ -831,7 +864,8 @@ document.addEventListener("click",e=>{if(!e.target.closest("[data-cm]"))return;c
 function curStage(){return Math.min(Math.max(+((S.meta&&S.meta.stage)||0),0),STAGES.length-1);}
 function renderBoard(){
   view="board";
-  const st=boardStage==null?curStage():boardStage;
+  const maxSt=FACIL()||S.meta.open?STAGES.length-1:curStage();
+  const st=Math.min(boardStage==null?curStage():boardStage,maxSt);
   const k=STAGES[st].k;
   const needTwo=st>1&&G.n<2;
   const skyOpts={};
@@ -844,30 +878,31 @@ function renderBoard(){
   if(k==="who"&&mysteryShown&&G.P[mysteryIdx])skyOpts.hi=G.P[mysteryIdx].id;
   app.innerHTML=`<div class="wrap wide">
    <div class="top"><h1>${esc(S.meta.name)}</h1>
-     <span class="muted">קוד המעגל <span class="code">${ROOM}</span> · <button class="link" id="addBtn">+ הוספת בן/בת משפחה</button> · <a class="link" href="${leadURL()}">תצוגת הנחיה ↗</a> · <a class="link" href="${gameURL()}">משחק הזיהוי ↗</a>${online?"":" · <span style='color:var(--rose)'>אין חיבור</span>"}</span></div>
-   <nav class="steps" aria-label="שלבי המפגש">${STAGES.map((s,i)=>`<button data-st="${i}" class="${i===st?"on":i<=curStage()?"done":""}">${i}. ${s.short}</button>`).join("")}</nav>
+     <span class="muted">קוד המעגל <span class="code">${ROOM}</span> · <button class="link" id="addBtn">+ הוספת בן/בת משפחה</button>${online?"":" · <span style='color:var(--rose)'>אין חיבור</span>"}</span></div>
+   <nav class="steps" aria-label="שלבי המפגש">${STAGES.map((s,i)=>`<button data-st="${i}" class="${i===st?"on":i<=curStage()?"done":""}" ${i>maxSt?'disabled title="נפתח כשהמנחה מתקדם"':""}>${i}. ${s.short}</button>`).join("")}</nav>${FACIL()?"":`<p class="muted" style="margin:0 0 6px;font-size:.9rem">${S.meta.open?"כל השלבים פתוחים.":"השלבים נפתחים כשהמנחה מתקדם במפגש."}</p>`}
    <div class="board">
      <aside class="side night">${st===0?`<div class="join-box"><p style="margin:6px 0 10px;opacity:.9">סרקו כדי להצטרף</p><div class="qr">${qrSVG(joinURL())}</div><p style="margin:10px 0 0;opacity:.85">או היכנסו לקישור והקלידו את הקוד</p><div class="code">${ROOM}</div></div>`:""}
        <div class="sky">${skySVG(skyOpts)}</div>${tribeLegend()}</aside>
      <section class="stage" id="stage">${needTwo?`<div class="eyebrow">${STAGES[st].t}</div><h2>מחכים לעוד בני משפחה</h2><p class="lead">התמונה המשפחתית נפתחת כשיש לפחות שני משתתפים במעגל.</p>`:stageHTML(st)}
        <div class="nav"><button class="btn ghost small" id="prevBtn" ${st===0?"disabled":""}>→ הקודם</button>
-       <label class="toggle"><input type="checkbox" id="openTg" ${S.meta.open?"checked":""}> כל השלבים פתוחים בטלפונים</label>
-       <button class="btn small" id="nextBtn" ${st===STAGES.length-1?"disabled":""}>${st===0?"מתחילים ←":"הבא ←"}</button></div>
+       ${FACIL()?`<label class="toggle"><input type="checkbox" id="openTg" ${S.meta.open?"checked":""}> כל השלבים פתוחים בטלפונים</label>`:"<span></span>"}
+       <button class="btn small" id="nextBtn" ${st>=maxSt?"disabled":""}>${st===0?"מתחילים ←":"הבא ←"}</button></div>
      </section>
    </div></div>`;
   app.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>goStage(+b.dataset.st));
   $("prevBtn").onclick=()=>goStage(st-1);$("nextBtn").onclick=()=>goStage(st+1);
   $("addBtn").onclick=openAdd;
-  $("openTg").onchange=e=>store.patch(`rooms/${ROOM}/meta`,{open:e.target.checked});
+  if($("openTg"))$("openTg").onchange=e=>store.patch(`rooms/${ROOM}/meta`,{open:e.target.checked});
   app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const p=G.P.find(p=>p.id===b.dataset.del);if(p&&confirmDel(p))store.del(`rooms/${ROOM}/members/${p.id}`);});
   const ms=$("mysteryBtn");if(ms)ms.onclick=()=>{if(!mysteryShown&&mysteryIdx>=0){mysteryShown=true;}else{mysteryIdx=(mysteryIdx+1)%G.n;mysteryShown=false;}renderBoard();};
   const wa=$("waBtn");if(wa)wa.href="https://wa.me/?text="+encodeURIComponent(`מצטרפים למעגל "${S.meta.name}" במארג המשפחתי: ממלאים שם ותאריך לידה ומקבלים מפה אישית\n${joinURL()}`);
+  addNav("stages");
   const cp=$("copyBtn");if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(joinURL());cp.textContent="הקישור הועתק ✓";}catch(e){prompt("העתיקו את הקישור:",joinURL());}};
 }
 function confirmDel(p){return window.confirm?confirm(`להסיר את ${p.name} מהמעגל?`):true;}
 function goStage(i){
   i=Math.max(0,Math.min(STAGES.length-1,i));boardStage=i;mysteryIdx=-1;mysteryShown=false;
-  if(i>curStage())store.patch(`rooms/${ROOM}/meta`,{stage:i});
+  if(FACIL()&&i>curStage())store.patch(`rooms/${ROOM}/meta`,{stage:i});
   renderBoard();window.scrollTo({top:0,behavior:"smooth"});
 }
 function personCard(p,body){return `<div class="pc"><div class="who">${dotOf(p)}<b>${esc(p.label)}</b></div>${body}</div>`;}
@@ -884,7 +919,7 @@ function stageHTML(st){
     h+=`<p class="lead">לכל אחד יש מספר דרך: הכיוון של החיים שלו. כל אחד כבר רואה בטלפון את המפה האישית המלאה שלו. כאן משחקים: מי זה?</p>`;
     const mp=P[mysteryIdx];
     h+=mp?`<div class="mystery">"${esc(N[single(mp.LP)].essence.split(". ").slice(0,2).join(". ").replace(/את\/ה/g,"הוא/היא"))}."${mysteryShown?`<div style="margin-top:12px;font-family:var(--f-body);font-size:1.1rem;color:var(--gold)">זה ${esc(mp.label)}: ${get(mp.LP,"title")}, שביל חיים ${mp.LP}</div>`:""}</div>`:"";
-    h+=`<div class="row" style="margin-top:6px"><a class="btn ghost small" style="text-decoration:none" href="${gameURL()}">משחק הזיהוי ↗</a><button class="btn small" id="mysteryBtn">${mysteryIdx<0?"משפט מסתורי: על מי מדובר?":mysteryShown?"המשפט הבא":"חשיפה"}</button></div>`;
+    h+=`<div class="row" style="margin-top:6px"><button class="btn ghost small" data-go="game" type="button">משחק הזיהוי</button><button class="btn small" id="mysteryBtn">${mysteryIdx<0?"משפט מסתורי: על מי מדובר?":mysteryShown?"המשפט הבא":"חשיפה"}</button></div>`;
     h+=`<div class="grid" style="margin-top:18px">${P.map(p=>personCard(p,`<p><span class="num">${p.LP}</span> <b>${get(p.LP,"title")}</b></p><p class="muted">${get(p.LP,"kw")}</p>`)).join("")}</div>`;
   }
   if(k==="num"){
@@ -942,17 +977,42 @@ function renderPhone(){
   const scrollY=window.scrollY;const keep=$("noteTake")?{t:$("noteTake").value,g:$("noteGive").value}:null;
   app.innerHTML=`<div class="wrap">
    <div class="top"><h1>שלום ${esc(me.first)}</h1><span class="muted">${esc(S.meta.name)}</span></div>
-   <div class="tabs" role="tablist"><button role="tab" data-tab="me" class="${phoneTab==="me"?"on":""}" aria-selected="${phoneTab==="me"}">המפה שלי</button><button role="tab" data-tab="fam" class="${phoneTab==="fam"?"on":""}" aria-selected="${phoneTab==="fam"}">אני במשפחה</button></div>
-   <div id="pbody">${phoneTab==="me"?myMap(me):meInFamily(me)}</div>
-   <p style="margin-top:28px;text-align:center"><a class="link" href="${gameURL()}">משחק הזיהוי</a> · <button class="link" id="pAdd">+ הוספת בן/בת משפחה נוסף/ת</button> · <button class="link" id="pOut">זה לא אני</button></p>
+   <div id="pbody">${myMap(me)}</div>
+   <p style="margin-top:28px;text-align:center"><button class="link" id="pAdd">+ הוספת בן/בת משפחה נוסף/ת</button> · <button class="link" id="pOut">זה לא אני</button></p>
   </div>`;
-  app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{phoneTab=b.dataset.tab;renderPhone();window.scrollTo({top:0});});
+  addNav("me");
   $("pAdd").onclick=openAdd;
-  $("pOut").onclick=()=>{ls.del("fam-me:"+ROOM);view="";renderJoin();};
-  if(keep&&$("noteTake")){$("noteTake").value=keep.t;$("noteGive").value=keep.g;}
-  const nb=$("noteBtn");if(nb)nb.onclick=async()=>{const take=$("noteTake").value.trim(),give=$("noteGive").value.trim();if(!take&&!give)return;nb.disabled=true;
+  $("pOut").onclick=()=>{ls.del("fam-me:"+ROOM);go("join");};
+  window.scrollTo({top:scrollY});
+}
+function bindNotes(me){
+  const nb=$("noteBtn");if(!nb||!me)return;nb.onclick=async()=>{const take=$("noteTake").value.trim(),give=$("noteGive").value.trim();if(!take&&!give)return;nb.disabled=true;
     try{const id=ls.get("fam-note:"+ROOM)||newId();ls.set("fam-note:"+ROOM,id);await store.put(`rooms/${ROOM}/notes/${id}`,{who:me.label,take:take.slice(0,240),give:give.slice(0,240),t:Date.now()});$("noteSt").textContent="נשלח למעגל ✓";}
     catch(e){$("noteSt").textContent="השליחה לא הצליחה, נסו שוב.";}nb.disabled=false;};
+}
+/* ---------- family view: everyone's maps + my place in the family ---------- */
+let famTab="all";
+function renderFamily(){
+  view="fam";
+  const me=G.P.find(p=>p.id===myId());
+  const scrollY=window.scrollY;const keep=$("noteTake")?{t:$("noteTake").value,g:$("noteGive").value}:null;
+  const P=G.P;
+  app.innerHTML=`<div class="wrap">
+   <div class="top"><h1>המשפחה</h1><span class="muted">${esc(S.meta.name)} · ${G.n} משתתפים</span></div>
+   ${me?`<div class="tabs" role="tablist"><button role="tab" data-ft="all" class="${famTab==="all"?"on":""}" aria-selected="${famTab==="all"}">המפות של כולם</button><button role="tab" data-ft="mine" class="${famTab==="mine"?"on":""}" aria-selected="${famTab==="mine"}">המקום שלי במשפחה</button></div>`:""}
+   ${me&&famTab==="mine"?meInFamily(me):`
+    <p class="muted" style="margin:6px 0 12px">לחיצה על כרטיס פותחת את המפה המלאה של אותו משתתף. ${G.n>1?`המספר של המשפחה: <b style="color:var(--gold)">${G.LP}</b> · ${get(G.LP,"title")}`:""}</p>
+    <div id="leadList" style="margin-top:0">${P.map((p,i)=>cardHTML(p,i,null,0)).join("")||'<div class="locked">עוד אין משתתפים במעגל.</div>'}</div>
+    ${G.n>1?`<div class="lead-actions" style="margin-top:16px"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button></div>`:""}`}
+   <p style="margin-top:24px;text-align:center"><button class="link" id="fAdd">+ הוספת בן/בת משפחה</button></p>
+  </div>`;
+  addNav("fam");
+  app.querySelectorAll("[data-ft]").forEach(b=>b.onclick=()=>{famTab=b.dataset.ft;renderFamily();window.scrollTo({top:0});});
+  app.querySelectorAll(".lc").forEach(b=>b.onclick=()=>{const i=+b.dataset.i;openReader(personReading(P[i]),P,i);});
+  app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openReader(groupReading(b.dataset.g)));
+  $("fAdd").onclick=openAdd;
+  if(keep&&$("noteTake")){$("noteTake").value=keep.t;$("noteGive").value=keep.g;}
+  bindNotes(me);
   window.scrollTo({top:scrollY});
 }
 function personIx(p){
@@ -993,7 +1053,7 @@ function myMap(p){
     <div class="ix"><b>שליחות ועבודה</b><p>${get(lp,"career")}</p></div>
   </details>
   <div class="sec"><div class="ix" style="border-color:var(--gold)"><b>שאלה לדרך</b><p>${get(lp,"growth")}</p></div></div>
-  <p style="text-align:center;margin-top:20px"><button class="btn small" onclick="phoneTab='fam';renderPhone();window.scrollTo({top:0})">ומה המקום שלי במשפחה? ←</button></p>`;
+  <p style="text-align:center;margin-top:20px"><button class="btn small" type="button" onclick="famTab='mine';go('fam')">ומה המקום שלי במשפחה? ←</button></p>`;
 }
 function meInFamily(p){
   const open=S.meta.open,cs=curStage();
@@ -1072,10 +1132,11 @@ function renderLead(){
   const keepOpen=reader?reader.innerHTML:null;
   app.innerHTML=`<div class="wrap" style="max-width:1600px">
    <div class="lead-top"><h1>${esc(S.meta.name)} <span class="muted" style="font-size:.6em">· תצוגת הנחיה</span></h1>
-    <div class="lead-actions"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button><button data-cm type="button">${colorMode==="person"?"צביעה לפי שבט":"צביעה לפי משתתף"}</button><a href="${gameURL()}">משחק הזיהוי</a><a href="${BASE}?r=${ROOM}&board=1${LOCAL&&qs.has("local")?"&local=1":""}">← ללוח השלבים</a></div></div>
+    <div class="lead-actions"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button><button data-cm type="button">${colorMode==="person"?"צביעה לפי שבט":"צביעה לפי משתתף"}</button></div></div>
    <div id="leadStage"></div><div id="leadList"></div>
    <p class="muted" style="text-align:center;font-size:.88rem;margin-top:8px">לחיצה על כרטיס פותחת את הניתוח המלא להקראה. לחיצה על קו במרכז מקריאה את החיבור.</p></div>`;
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openReader(groupReading(b.dataset.g)));
+  addNav("circle");
   layoutLead();
 }
 function leadLinks(){
@@ -1148,7 +1209,7 @@ function buildTraits(round){
 function renderGame(){
   view="game";
   const P=G.P;
-  if(P.length<2){app.innerHTML=`<div class="wrap"><div class="top"><h1>משחק הזיהוי</h1></div><div class="locked">המשחק נפתח כשיש לפחות שני משתתפים במעגל.</div></div>`;return;}
+  if(P.length<2){app.innerHTML=`<div class="wrap"><div class="top"><h1>משחק הזיהוי</h1></div><div class="locked">המשחק נפתח כשיש לפחות שני משתתפים במעגל.</div></div>`;addNav("game");return;}
   const T=buildTraits(gameRound);
   const PNAME={LP:"שביל החיים",expr:"מספר הביטוי",soul:"דחף הנשמה",pers:"מספר האישיות"};
   const near=(p,k)=>["LP","expr","soul","pers"].find(f=>single(p[f])===k);
@@ -1159,7 +1220,7 @@ function renderGame(){
    <div class="top"><h1>משחק הזיהוי</h1><span class="muted">${esc(S.meta.name)}</span></div>
    <p class="muted" style="margin:0">לכל תכונה: מי במעגל נושא/ת אותה? אפשר לבחור יותר משם אחד. לחשוב, להתייעץ, ואז לחשוף.</p>
    <div class="score"><span>${shown?`זוהו נכון: <b>${right}</b> מתוך ${total}${close?` · קרובים: <b>${close}</b>`:""}`:`${T.length} תכונות · ${P.length} משתתפים`}</span>
-    <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost small" id="gAll">חשיפת הכול</button><button class="btn ghost small" id="gNew">סבב חדש</button><a class="btn ghost small" style="text-decoration:none" href="${back}${isHost()||qs.has("board")?"&board=1":""}">← חזרה</a></span></div>
+    <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost small" id="gAll">חשיפת הכול</button><button class="btn ghost small" id="gNew">סבב חדש</button></span></div>
    ${T.map((x,i)=>{const pk=gamePicks[i]||[],sh=!!gameShown[i];
      const byId=id=>P.find(p=>p.id===id);
      const owners=x.ids.map(byId);
@@ -1176,6 +1237,7 @@ function renderGame(){
   app.querySelectorAll("[data-rv]").forEach(b=>b.onclick=()=>{gameShown[b.dataset.rv]=1;const y=scrollY;renderGame();scrollTo(0,y);});
   $("gAll").onclick=()=>{T.forEach((x,i)=>gameShown[i]=1);const y=scrollY;renderGame();scrollTo(0,y);};
   $("gNew").onclick=()=>{gameRound++;gamePicks={};gameShown={};renderGame();scrollTo(0,0);};
+  addNav("game");
 }
 const gameURL=()=>BASE+"?r="+ROOM+"&game=1"+(qs.has("local")?"&local=1":"");
 
