@@ -245,6 +245,18 @@ dialog::backdrop{background:rgba(10,20,24,.5)}
 }
 .steps button:disabled{opacity:.45;cursor:not-allowed}
 
+.sharebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.reader .sharebar .btn{font-size:.95rem}
+#printArea{display:none}
+@media print{
+  body.printing>*:not(#printArea){display:none!important}
+  body.printing #printArea{display:block!important;color:#111;font-size:13pt;line-height:1.6}
+  body.printing #printArea .param{border-color:#ccc}
+  body.printing #printArea .param .pn{color:#111}
+  body.printing #printArea .param .pv{background:#eee;color:#111}
+  .gnav,.sharebar{display:none!important}
+}
+
 @media (max-width:900px){.board{grid-template-columns:1fr}.board .side{position:static;order:2}}
 @media (prefers-reduced-motion:no-preference){.lit{animation:pop .6s ease-out;transform-box:fill-box;transform-origin:center}@keyframes pop{from{opacity:0;transform:scale(.4)}}}
 @media print{body{background:#fff}.steps,.nav,.btn,.tabs{display:none!important}}
@@ -1053,6 +1065,7 @@ function myMap(p){
     <div class="ix"><b>שליחות ועבודה</b><p>${get(lp,"career")}</p></div>
   </details>
   <div class="sec"><div class="ix" style="border-color:var(--gold)"><b>שאלה לדרך</b><p>${get(lp,"growth")}</p></div></div>
+  <div class="sec"><h3>לשמור ולשתף</h3><p class="muted" style="margin:0 0 6px;font-size:.92rem">"המפה האישית המורחבת" פותחת את כלי מפת המספרים עם הפרטים שלך, ובו ניתוח מעמיק יותר: מחזורי חיים, טבלת לידה, שיעורים קרמתיים ועוד.</p>${shareBlock(p)}</div>
   <p style="text-align:center;margin-top:20px"><button class="btn small" type="button" onclick="famTab='mine';go('fam')">ומה המקום שלי במשפחה? ←</button></p>`;
 }
 function meInFamily(p){
@@ -1120,7 +1133,8 @@ function openReader(html,seq,idx){
   closeReader();
   reader=document.createElement("div");reader.className="reader";
   const nav=seq&&seq.length>1?`<div class="rnav"><button class="btn ghost small" data-rv="-1">→ ${esc(seq[(idx-1+seq.length)%seq.length].label)}</button><button class="btn small" data-rv="1">${esc(seq[(idx+1)%seq.length].label)} ←</button></div>`:"";
-  reader.innerHTML=`<div class="box" role="dialog" aria-modal="true" tabindex="-1"><button class="x" aria-label="סגירה">×</button>${html}${nav}</div>`;
+  const pp=seq&&seq[idx];
+  reader.innerHTML=`<div class="box" role="dialog" aria-modal="true" tabindex="-1"><button class="x" aria-label="סגירה">×</button>${html}${pp?shareBlock(pp):""}${nav}</div>`;
   document.body.appendChild(reader);
   reader.addEventListener("click",e=>{if(e.target===reader||e.target.closest(".x"))closeReader();const b=e.target.closest("[data-rv]");if(b){const j=(idx+ +b.dataset.rv+seq.length)%seq.length;openReader(personReading(seq[j]),seq,j);}});
   reader.querySelector(".box").focus();
@@ -1240,6 +1254,47 @@ function renderGame(){
   addNav("game");
 }
 const gameURL=()=>BASE+"?r="+ROOM+"&game=1"+(qs.has("local")?"&local=1":"");
+
+
+/* ---------- personal tool link + sharing a full reading ---------- */
+const MAP_URL="https://boazbareket1.github.io/numerology-map/";
+function personalMapURL(id){
+  const m=S.members[id]||{};
+  const arr=[m.name||"","",m.cur||"",m.bdate||"","he","none","",0,"",""];
+  const b=btoa(unescape(encodeURIComponent(JSON.stringify(arr)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  return MAP_URL+"?d="+b;
+}
+function htmlToText(html){
+  const d=document.createElement("div");
+  d.innerHTML=html.replace(/<span class="pv">/g,'<span class="pv"> · ').replace(/<\/(h2|h3|p|div|li)>/g,"</$1>\n").replace(/<br\s*\/?>/g,"\n");
+  d.querySelectorAll("button,.rnav,.sharebar,.eyebrow,h2").forEach(n=>n.remove());
+  d.querySelectorAll(".pn").forEach(n=>n.textContent="✦ "+n.textContent);
+  return d.textContent.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
+}
+function shareBlock(p){
+  return `<div class="sharebar"><button type="button" class="btn small" data-share="${p.id}">שיתוף הניתוח</button><button type="button" class="btn ghost small" data-wa="${p.id}">וואטסאפ</button><button type="button" class="btn ghost small" data-copy="${p.id}">העתקה</button><button type="button" class="btn ghost small" data-print="${p.id}">הדפסה / PDF</button><a class="btn ghost small" style="text-decoration:none" href="${esc(personalMapURL(p.id))}" target="_blank" rel="noopener">למפה האישית המורחבת ↗</a><span class="status" data-sst></span></div>`;
+}
+function readingText(p){
+  return `המפה של ${p.name} · המארג המשפחתי (${S.meta.name})\n\n`+htmlToText(personReading(p))+`\n\nלמפה האישית המורחבת: ${personalMapURL(p.id)}\nלמעגל: ${joinURL()}`;
+}
+function sstat(el,t){const s=el.closest(".sharebar")?.querySelector("[data-sst]");if(s){s.textContent=t;setTimeout(()=>s.textContent="",4000);}}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-share],[data-wa],[data-copy],[data-print]");if(!b)return;
+  const id=b.dataset.share||b.dataset.wa||b.dataset.copy||b.dataset.print;const p=G.P.find(x=>x.id===id);if(!p)return;
+  const text=readingText(p);
+  if(b.dataset.print){printReading(p);return;}
+  if(b.dataset.wa){window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener");return;}
+  if(b.dataset.share&&navigator.share){try{await navigator.share({title:"המפה של "+p.name,text});sstat(b,"שותף ✓");return;}catch(err){if(err&&err.name==="AbortError")return;}}
+  try{await navigator.clipboard.writeText(text);sstat(b,"הניתוח הועתק ✓ אפשר להדביק בכל מקום");}
+  catch(err){prompt("העתיקו את הניתוח:",text);}
+});
+function printReading(p){
+  const w=document.createElement("div");w.id="printArea";
+  w.innerHTML=`<p class="muted">המארג המשפחתי · ${esc(S.meta.name)}</p>${personReading(p)}<p class="muted" style="margin-top:18px">למפה האישית המורחבת: ${esc(personalMapURL(p.id))}</p>`;
+  document.body.appendChild(w);document.body.classList.add("printing");
+  const done=()=>{document.body.classList.remove("printing");w.remove();removeEventListener("afterprint",done);};
+  addEventListener("afterprint",done);setTimeout(()=>window.print(),50);
+}
 
 /* ================= start ================= */
 if(LOCAL&&!qs.has("local"))$("demoNote").hidden=false;
