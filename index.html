@@ -866,17 +866,22 @@ async function join(){
 }
 
 /* ---------- add member dialog (board + phone) ---------- */
-function openAdd(){
-  $("addForm").innerHTML=`<label class="f">שם מלא מהלידה, בעברית<input type="text" id="aName" autocomplete="off"></label>
+function openAdd(editId){
+  const m=editId?S.members[editId]:null;
+  $("addTitle").textContent=m?"עריכת פרטים":"הוספת בן/בת משפחה";
+  $("addDlg").querySelector("p.muted").textContent=m?"תיקון השם או תאריך הלידה. הניתוח יתעדכן מיד אצל כולם.":"למי שלא מצטרף/ת מהטלפון בעצמו/ה.";
+  $("addForm").innerHTML=`<label class="f">שם מלא מהלידה, בעברית<small>כולל שם המשפחה מהלידה</small><input type="text" id="aName" autocomplete="off"></label>
   <div style="display:flex;flex-direction:column;gap:5px;font-weight:600;font-size:.95rem;margin-top:14px">תאריך לידה${dateSel("aDate")}</div>
   <label class="f">השם של היום <small>לא חובה</small><input type="text" id="aCur" autocomplete="off"></label>
-  <div class="row"><button class="btn small" id="aBtn">הוספה</button><button class="btn ghost small" id="aCancel">ביטול</button></div><p class="err" id="aErr"></p>`;
+  <div class="row"><button class="btn small" id="aBtn">${m?"שמירה":"הוספה"}</button><button class="btn ghost small" id="aCancel">ביטול</button></div><p class="err" id="aErr"></p>`;
+  if(m){$("aName").value=m.name||"";$("aCur").value=m.cur||"";const [y,mo,dd]=(m.bdate||"").split("-").map(Number);const g=k=>$("aDate").querySelector(`[data-p="${k}"]`);if(y){g("y").value=String(y);g("m").value=String(mo);g("d").value=String(dd);}}
   const d=$("addDlg");d.showModal?d.showModal():d.setAttribute("open","");
   $("aCancel").onclick=()=>d.close();
   $("aBtn").onclick=async()=>{const name=$("aName").value.trim(),bd=dateVal("aDate"),cur=$("aCur").value.trim();
     if(!validPerson(name,bd,$("aErr")))return;$("aBtn").disabled=true;
-    try{await store.post(`rooms/${ROOM}/members`,{name:name.slice(0,70),bdate:bd,cur:cur.slice(0,70),t:Date.now(),self:false});d.close();}
-    catch(e){$("aErr").textContent="ההוספה לא הצליחה. נסו שוב.";$("aBtn").disabled=false;}};
+    try{if(m){await store.patch(`rooms/${ROOM}/members/${editId}`,{name:name.slice(0,70),bdate:bd,cur:cur.slice(0,70)});closeReader();}
+        else await store.post(`rooms/${ROOM}/members`,{name:name.slice(0,70),bdate:bd,cur:cur.slice(0,70),t:Date.now(),self:false});d.close();}
+    catch(e){$("aErr").textContent=m?"השמירה לא הצליחה. נסו שוב.":"ההוספה לא הצליחה. נסו שוב.";$("aBtn").disabled=false;}};
 }
 
 /* ---------- circle of lights ---------- */
@@ -932,7 +937,7 @@ function renderBoard(){
    </div></div>`;
   app.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>goStage(+b.dataset.st));
   $("prevBtn").onclick=()=>goStage(st-1);$("nextBtn").onclick=()=>goStage(st+1);
-  $("addBtn").onclick=openAdd;
+  $("addBtn").onclick=()=>openAdd();
   if($("openTg"))$("openTg").onchange=e=>store.patch(`rooms/${ROOM}/meta`,{open:e.target.checked});
   app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const p=G.P.find(p=>p.id===b.dataset.del);if(p&&confirmDel(p))store.del(`rooms/${ROOM}/members/${p.id}`);});
   const ms=$("mysteryBtn");if(ms)ms.onclick=()=>{if(!mysteryShown&&mysteryIdx>=0){mysteryShown=true;}else{mysteryIdx=(mysteryIdx+1)%G.n;mysteryShown=false;}renderBoard();};
@@ -952,7 +957,7 @@ function stageHTML(st){
   if(k==="join"){
     h+=`<p class="lead">כל אחד סורק את הקוד בטלפון, ממלא שם ותאריך לידה, ונקודת אור נדלקת במעגל. מי שאין לו טלפון: "הוספת בן/בת משפחה" למעלה.</p>
     <div class="row" style="margin-top:0"><a class="btn ghost small" id="waBtn" target="_blank" rel="noopener" style="text-decoration:none">שליחת הקישור בוואטסאפ</a><button class="btn ghost small" id="copyBtn">העתקת הקישור</button></div>
-    <h3 style="margin-top:22px;font-size:1.15rem">במעגל עכשיו: ${G.n}</h3><div class="members">${P.map(p=>`<span class="mem">${dotOf(p)}${esc(p.name)}<button data-del="${p.id}" aria-label="הסרת ${esc(p.name)}">×</button></span>`).join("")||'<span class="muted">עוד אין משתתפים</span>'}</div>
+    <h3 style="margin-top:22px;font-size:1.15rem">במעגל עכשיו: ${G.n}</h3><div class="members">${P.map(p=>`<span class="mem">${dotOf(p)}${esc(p.name)}<button data-edit="${p.id}" aria-label="עריכת ${esc(p.name)}" title="עריכה">✎</button><button data-del="${p.id}" aria-label="הסרת ${esc(p.name)}">×</button></span>`).join("")||'<span class="muted">עוד אין משתתפים</span>'}</div>
     <p class="muted" style="margin-top:16px;font-size:.92rem">אפשר להשאיר את המעגל פתוח לאורך זמן: מי שמצטרף אחר כך נכנס אוטומטית לתמונה המשפחתית. כדי להציג את הלוח ממחשב או טלוויזיה אחרים: <span style="direction:ltr;display:inline-block;word-break:break-all">${esc(boardURL())}</span></p>`;
     return h;
   }
@@ -1022,7 +1027,7 @@ function renderPhone(){
    <p style="margin-top:28px;text-align:center"><button class="link" id="pAdd">+ הוספת בן/בת משפחה נוסף/ת</button> · <button class="link" id="pOut">זה לא אני</button></p>
   </div>`;
   addNav("me");
-  $("pAdd").onclick=openAdd;
+  $("pAdd").onclick=()=>openAdd();
   $("pOut").onclick=()=>{ls.del("fam-me:"+ROOM);go("join");};
   window.scrollTo({top:scrollY});
 }
@@ -1052,7 +1057,7 @@ function renderFamily(){
   app.querySelectorAll("[data-ft]").forEach(b=>b.onclick=()=>{famTab=b.dataset.ft;renderFamily();window.scrollTo({top:0});});
   app.querySelectorAll(".lc").forEach(b=>b.onclick=()=>{const i=+b.dataset.i;openReader(personReading(P[i]),P,i);});
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openReader(groupReading(b.dataset.g)));
-  $("fAdd").onclick=openAdd;
+  $("fAdd").onclick=()=>openAdd();
   if(keep&&$("noteTake")){$("noteTake").value=keep.t;$("noteGive").value=keep.g;}
   bindNotes(me);
   window.scrollTo({top:scrollY});
@@ -1304,7 +1309,7 @@ function htmlToText(html){
   return d.textContent.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
 }
 function shareBlock(p){
-  return `<div class="sharebar"><button type="button" class="btn small" data-sharedlg="${p.id}">שיתוף / שליחה / PDF</button><a class="btn ghost small" style="text-decoration:none" href="${esc(personalMapURL(p.id))}" target="_blank" rel="noopener">למפה האישית המורחבת ↗</a></div>`;
+  return `<div class="sharebar"><button type="button" class="btn small" data-sharedlg="${p.id}">שיתוף / שליחה / PDF</button><a class="btn ghost small" style="text-decoration:none" href="${esc(personalMapURL(p.id))}" target="_blank" rel="noopener">למפה האישית המורחבת ↗</a><button type="button" class="btn ghost small" data-edit="${p.id}">✎ עריכת שם ותאריך</button></div>`;
 }
 function readingText(p){
   return `המפה של ${p.name} · המארג המשפחתי (${S.meta.name})\n\n`+htmlToText(personReading(p))+`\n\nלמפה האישית המורחבת: ${personalMapURL(p.id)}\nלמעגל: ${joinURL()}`;
@@ -1361,6 +1366,7 @@ async function doShare(how){
     else location.href="mailto:?subject="+encodeURIComponent(title)+"&body="+encodeURIComponent(text);return;}
   if(await copy())st.textContent="הועתק ✓ אפשר להדביק בכל מקום.";else prompt("העתיקו:",text);
 }
+document.addEventListener("click",e=>{const b=e.target.closest("[data-edit]");if(!b)return;e.preventDefault();openAdd(b.dataset.edit);});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-sharedlg]");if(!b)return;e.preventDefault();openShare(b.dataset.sharedlg||null);});
 function printHTML(html,title){
   const w=document.createElement("div");w.id="printArea";
