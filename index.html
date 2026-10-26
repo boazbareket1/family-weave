@@ -273,6 +273,14 @@ dl.gloss dt.hl,dl.gloss dt.hl+dd{background:var(--gold-soft);border-radius:6px}
 @media (max-width:620px){dl.gloss{grid-template-columns:1fr}dl.gloss dd{margin-bottom:8px}}
 @media (max-width:760px){.gnav button{font-size:.68rem}.gnav .gi{font-size:1.1rem}}
 
+.sopts{display:grid;gap:8px;margin-top:12px}
+.sopt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer}
+.sopt:has(input:checked){border-color:var(--gold);background:var(--gold-soft)}
+.sopt input{accent-color:var(--gold);margin-top:5px}
+.sopt b{display:block}.sopt small{color:var(--muted)}
+#shareDlg{width:min(520px,calc(100vw - 24px))}
+@media print{body.printing #printArea .pbreak{break-before:page}body.printing #printArea .ask{display:none}}
+
 @media (max-width:900px){.board{grid-template-columns:1fr}.board .side{position:static;order:2}}
 @media (prefers-reduced-motion:no-preference){.lit{animation:pop .6s ease-out;transform-box:fill-box;transform-origin:center}@keyframes pop{from{opacity:0;transform:scale(.4)}}}
 @media print{body{background:#fff}.steps,.nav,.btn,.tabs{display:none!important}}
@@ -282,6 +290,7 @@ dl.gloss dt.hl,dl.gloss dt.hl+dd{background:var(--gold-soft);border-radius:6px}
 <div id="demoNote" hidden style="background:#f6e6c4;color:#5c4210;border-radius:0 0 12px 12px;padding:6px 12px;font-size:.88rem;text-align:center;max-width:760px;margin:0 auto">תצוגת הדגמה: הכול נשמר בדפדפן הזה בלבד, בלי חיבור בין טלפונים. בגרסה שבגיטהאב המכשירים מתחברים.</div>
 <div id="app"></div>
 
+<dialog id="shareDlg" aria-label="שיתוף"></dialog>
 <dialog id="addDlg" aria-labelledby="addTitle">
   <h2 id="addTitle" style="font-size:1.4rem">הוספת בן/בת משפחה</h2>
   <p class="muted" style="margin:6px 0 0">למי שלא מצטרף/ת מהטלפון בעצמו/ה.</p>
@@ -910,7 +919,7 @@ function renderBoard(){
   if(k==="who"&&mysteryShown&&G.P[mysteryIdx])skyOpts.hi=G.P[mysteryIdx].id;
   app.innerHTML=`<div class="wrap wide">
    <div class="top"><h1>${esc(S.meta.name)}</h1>
-     <span class="muted">קוד המעגל <span class="code">${ROOM}</span> · <button class="link" id="addBtn">+ הוספת בן/בת משפחה</button>${online?"":" · <span style='color:var(--rose)'>אין חיבור</span>"}</span></div>
+     <span class="muted">קוד המעגל <span class="code">${ROOM}</span> · <button class="link" id="addBtn">+ הוספת בן/בת משפחה</button> · <button class="link" type="button" data-sharedlg="">שיתוף / PDF</button>${online?"":" · <span style='color:var(--rose)'>אין חיבור</span>"}</span></div>
    <nav class="steps" aria-label="שלבי המפגש">${STAGES.map((s,i)=>`<button data-st="${i}" class="${i===st?"on":i<=curStage()?"done":""}" ${i>maxSt?'disabled title="נפתח כשהמנחה מתקדם"':""}>${i}. ${s.short}</button>`).join("")}</nav>${FACIL()?"":`<p class="muted" style="margin:0 0 6px;font-size:.9rem">${S.meta.open?"כל השלבים פתוחים.":"השלבים נפתחים כשהמנחה מתקדם במפגש."}</p>`}
    <div class="board">
      <aside class="side night">${st===0?`<div class="join-box"><p style="margin:6px 0 10px;opacity:.9">סרקו כדי להצטרף</p><div class="qr">${qrSVG(joinURL())}</div><p style="margin:10px 0 0;opacity:.85">או היכנסו לקישור והקלידו את הקוד</p><div class="code">${ROOM}</div></div>`:""}
@@ -1036,7 +1045,8 @@ function renderFamily(){
     <p class="muted" style="margin:6px 0 12px">לחיצה על כרטיס פותחת את המפה המלאה של אותו משתתף. ${G.n>1?`המספר של המשפחה: <b style="color:var(--gold)">${G.LP}</b> · ${get(G.LP,"title")}`:""}</p>
     <div id="leadList" style="margin-top:0">${P.map((p,i)=>cardHTML(p,i,null,0)).join("")||'<div class="locked">עוד אין משתתפים במעגל.</div>'}</div>
     ${G.n>1?`<div class="lead-actions" style="margin-top:16px"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button></div>`:""}`}
-   <p style="margin-top:24px;text-align:center"><button class="link" id="fAdd">+ הוספת בן/בת משפחה</button></p>
+   <p style="margin-top:24px;text-align:center"><button class="btn small" type="button" data-sharedlg="">שיתוף / שליחה / PDF</button></p>
+   <p style="margin-top:10px;text-align:center"><button class="link" id="fAdd">+ הוספת בן/בת משפחה</button></p>
   </div>`;
   addNav("fam");
   app.querySelectorAll("[data-ft]").forEach(b=>b.onclick=()=>{famTab=b.dataset.ft;renderFamily();window.scrollTo({top:0});});
@@ -1167,7 +1177,7 @@ function renderLead(){
   const keepOpen=reader?reader.innerHTML:null;
   app.innerHTML=`<div class="wrap" style="max-width:1600px">
    <div class="lead-top"><h1>${esc(S.meta.name)} <span class="muted" style="font-size:.6em">· תצוגת הנחיה</span></h1>
-    <div class="lead-actions"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button><button data-cm type="button">${colorMode==="person"?"צביעה לפי שבט":"צביעה לפי משתתף"}</button></div></div>
+    <div class="lead-actions"><button data-g="mission">המספר שלנו</button><button data-g="miss">מה חסר</button><button data-g="links">כל החיווטים</button><button data-g="year">השנה שלנו</button><button data-cm type="button">${colorMode==="person"?"צביעה לפי שבט":"צביעה לפי משתתף"}</button><button type="button" data-sharedlg="">שיתוף / PDF</button></div></div>
    <div id="leadStage"></div><div id="leadList"></div>
    <p class="muted" style="text-align:center;font-size:.88rem;margin-top:8px">לחיצה על כרטיס פותחת את הניתוח המלא להקראה. לחיצה על קו במרכז מקריאה את החיבור.</p></div>`;
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openReader(groupReading(b.dataset.g)));
@@ -1288,30 +1298,73 @@ function personalMapURL(id){
 function htmlToText(html){
   const d=document.createElement("div");
   d.innerHTML=html.replace(/<span class="pv">/g,'<span class="pv"> · ').replace(/<\/(h2|h3|p|div|li)>/g,"</$1>\n").replace(/<br\s*\/?>/g,"\n");
-  d.querySelectorAll("button,.rnav,.sharebar,.eyebrow,h2").forEach(n=>n.remove());
+  d.querySelectorAll("button,.rnav,.sharebar,.eyebrow").forEach(n=>n.remove());
+  d.querySelectorAll("h2").forEach(n=>n.textContent="■ "+n.textContent);
   d.querySelectorAll(".pn").forEach(n=>n.textContent="✦ "+n.textContent);
   return d.textContent.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
 }
 function shareBlock(p){
-  return `<div class="sharebar"><button type="button" class="btn small" data-share="${p.id}">שיתוף הניתוח</button><button type="button" class="btn ghost small" data-wa="${p.id}">וואטסאפ</button><button type="button" class="btn ghost small" data-copy="${p.id}">העתקה</button><button type="button" class="btn ghost small" data-print="${p.id}">הדפסה / PDF</button><a class="btn ghost small" style="text-decoration:none" href="${esc(personalMapURL(p.id))}" target="_blank" rel="noopener">למפה האישית המורחבת ↗</a><span class="status" data-sst></span></div>`;
+  return `<div class="sharebar"><button type="button" class="btn small" data-sharedlg="${p.id}">שיתוף / שליחה / PDF</button><a class="btn ghost small" style="text-decoration:none" href="${esc(personalMapURL(p.id))}" target="_blank" rel="noopener">למפה האישית המורחבת ↗</a></div>`;
 }
 function readingText(p){
   return `המפה של ${p.name} · המארג המשפחתי (${S.meta.name})\n\n`+htmlToText(personReading(p))+`\n\nלמפה האישית המורחבת: ${personalMapURL(p.id)}\nלמעגל: ${joinURL()}`;
 }
 function sstat(el,t){const s=el.closest(".sharebar")?.querySelector("[data-sst]");if(s){s.textContent=t;setTimeout(()=>s.textContent="",4000);}}
-document.addEventListener("click",async e=>{
-  const b=e.target.closest("[data-share],[data-wa],[data-copy],[data-print]");if(!b)return;
-  const id=b.dataset.share||b.dataset.wa||b.dataset.copy||b.dataset.print;const p=G.P.find(x=>x.id===id);if(!p)return;
-  const text=readingText(p);
-  if(b.dataset.print){printReading(p);return;}
-  if(b.dataset.wa){window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener");return;}
-  if(b.dataset.share&&navigator.share){try{await navigator.share({title:"המפה של "+p.name,text});sstat(b,"שותף ✓");return;}catch(err){if(err&&err.name==="AbortError")return;}}
-  try{await navigator.clipboard.writeText(text);sstat(b,"הניתוח הועתק ✓ אפשר להדביק בכל מקום");}
-  catch(err){prompt("העתיקו את הניתוח:",text);}
-});
-function printReading(p){
+/* share center: choose what to share and how */
+function stripTxt(html){return htmlToText(html);}
+const ROLES_HTML=()=>`<h3>התפקידים במשפחה</h3>${G.P.map(p=>`<p><b>${esc(p.label)} · ${fam(p.LP,"role")}:</b> ${fam(p.LP,"give")}</p>`).join("")}`;
+function familyHTML(){
+  if(G.n<2)return `<p>התמונה המשפחתית נפתחת כשיש לפחות שני משתתפים.</p>`;
+  return `<h2>${esc(S.meta.name)}: התמונה המשפחתית</h2><p class="muted">${G.P.map(p=>`${esc(p.label)} (${p.LP})`).join(" · ")}</p>`+
+    ["mission","miss","links","year"].map(k=>groupReading(k).replace(/<div class="ask">[\s\S]*?<\/div>/g,"")).join("")+ROLES_HTML();
+}
+function scopeHTML(scope,pid){
+  const p=G.P.find(x=>x.id===pid);
+  if(scope==="me"&&p)return personReading(p)+`<p class="muted">למפה האישית המורחבת: ${esc(personalMapURL(p.id))}</p>`;
+  if(scope==="family")return familyHTML();
+  return familyHTML()+G.P.map(x=>`<div class="pbreak"></div>${personReading(x)}`).join("");
+}
+function scopeTitle(scope,pid){const p=G.P.find(x=>x.id===pid);return scope==="me"&&p?`המפה של ${p.name}`:scope==="family"?`התמונה המשפחתית של ${S.meta.name}`:`המארג המלא של ${S.meta.name}`;}
+function scopeText(scope,pid){
+  const t=stripTxt(scopeHTML(scope,pid).replace(/<div class="pbreak"><\/div>/g,"<p>────────────</p>"));
+  return `${scopeTitle(scope,pid)} · המארג המשפחתי\n\n${t}\n\nלמעגל: ${joinURL()}`;
+}
+let shareState={scope:"me",pid:null};
+function openShare(pid){
+  const me=G.P.find(p=>p.id===myId());
+  shareState={pid:pid||(me&&me.id)||null,scope:pid||me?"me":"family"};
+  const P=G.P.find(p=>p.id===shareState.pid);
+  const d=$("shareDlg");
+  const opt=(v,t,sub)=>`<label class="sopt"><input type="radio" name="sscope" value="${v}" ${shareState.scope===v?"checked":""}><span><b>${t}</b><small>${sub}</small></span></label>`;
+  d.innerHTML=`<h2 style="font-size:1.4rem">מה לשתף?</h2>
+   <div class="sopts">${P?opt("me",P.id===myId()?"המפה האישית שלי":`המפה של ${esc(P.label)}`,"שלושת הפרמטרים, הצמתים, התפקיד במשפחה והחוטים"):""}
+   ${opt("family","התמונה המשפחתית","המספר של המשפחה, מה חסר, החוטים, השנה והתפקידים")}
+   ${opt("all","המארג המלא","התמונה המשפחתית, ואחריה המפה של כל אחד מהמשתתפים")}</div>
+   <h3 style="font-size:1.05rem;margin:16px 0 8px">איך?</h3>
+   <div class="row" style="margin-top:0"><button class="btn small" data-sc="share">שיתוף…</button><button class="btn ghost small" data-sc="wa">וואטסאפ</button><button class="btn ghost small" data-sc="mail">מייל</button><button class="btn ghost small" data-sc="pdf">PDF / הדפסה</button><button class="btn ghost small" data-sc="copy">העתקה</button></div>
+   <p class="status" id="shSt"></p><p class="muted" id="shNote" style="font-size:.85rem;margin:4px 0 0"></p>
+   <div class="row"><button class="btn ghost small" id="shClose">סגירה</button></div>`;
+  d.showModal?d.showModal():d.setAttribute("open","");
+  const note=()=>{const len=scopeText(shareState.scope,shareState.pid).length;$("shNote").textContent=len>3000?"הטקסט ארוך. לשליחה נוחה עדיף PDF, או העתקה והדבקה. בוואטסאפ ובמייל הוא יועתק, ותצטרכו להדביק.":"";};
+  d.querySelectorAll('[name="sscope"]').forEach(r=>r.onchange=()=>{shareState.scope=r.value;note();});note();
+  $("shClose").onclick=()=>d.close();
+  d.querySelectorAll("[data-sc]").forEach(b=>b.onclick=()=>doShare(b.dataset.sc));
+}
+async function doShare(how){
+  const {scope,pid}=shareState,title=scopeTitle(scope,pid),text=scopeText(scope,pid),st=$("shSt");
+  const copy=async()=>{try{await navigator.clipboard.writeText(text);return true}catch(e){return false}};
+  if(how==="pdf"){$("shareDlg").close();printHTML(scopeHTML(scope,pid),title);return;}
+  if(how==="share"&&navigator.share){try{await navigator.share({title,text});st.textContent="שותף ✓";return;}catch(e){if(e&&e.name==="AbortError")return;}}
+  if(how==="wa"){if(text.length>3000){const ok=await copy();st.textContent=ok?"הטקסט הועתק. בוואטסאפ: בחרו צ'אט והדביקו.":"";window.open("https://wa.me/?text="+encodeURIComponent(`${title}\n(הטקסט המלא הועתק, הדביקו כאן)\n${joinURL()}`),"_blank","noopener");}
+    else window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener");return;}
+  if(how==="mail"){if(text.length>1800){const ok=await copy();st.textContent=ok?"הטקסט הועתק. בגוף המייל: הדביקו.":"";location.href="mailto:?subject="+encodeURIComponent(title)+"&body="+encodeURIComponent("(הדביקו כאן את הטקסט שהועתק)\n\n"+joinURL());}
+    else location.href="mailto:?subject="+encodeURIComponent(title)+"&body="+encodeURIComponent(text);return;}
+  if(await copy())st.textContent="הועתק ✓ אפשר להדביק בכל מקום.";else prompt("העתיקו:",text);
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-sharedlg]");if(!b)return;e.preventDefault();openShare(b.dataset.sharedlg||null);});
+function printHTML(html,title){
   const w=document.createElement("div");w.id="printArea";
-  w.innerHTML=`<p class="muted">המארג המשפחתי · ${esc(S.meta.name)}</p>${personReading(p)}<p class="muted" style="margin-top:18px">למפה האישית המורחבת: ${esc(personalMapURL(p.id))}</p>`;
+  w.innerHTML=`<p class="muted">המארג המשפחתי · ${esc(S.meta.name)}</p><h1 style="font-size:1.6rem">${esc(title)}</h1>${html}`;
   document.body.appendChild(w);document.body.classList.add("printing");
   const done=()=>{document.body.classList.remove("printing");w.remove();removeEventListener("afterprint",done);};
   addEventListener("afterprint",done);setTimeout(()=>window.print(),50);
